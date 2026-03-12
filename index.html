@@ -353,3 +353,692 @@ showScreen("pin")
 
 </body>
 </html>
+Model: The issue: if there's no saved `sb_url`/`sb_key`, you show the PIN screen but `sb` is null, so `verifyPin` crashes. If they ARE saved, `connectSupabase` calls `checkSession`, but if there's no saved session it shows the PIN screen where `sb` might not be ready yet.
+
+But the main reason it **keeps showing "Loading..."**: if `sb_url`/`sb_key` aren't in localStorage, `showScreen("pin")` works fine. But if they ARE stored, `connectSupabase` might fail silently or `checkSession` finds a valid session and calls `enterApp()` which hits `loadAll()` — and if any Supabase table doesn't exist, `Promise.all` throws and never reaches `showScreen("app")`.
+
+**Quick fixes:**
+
+```html
+<script>
+
+// ... keep everything the same until enterApp and loadAll ...
+
+async function enterApp(){
+
+  showScreen("loading")
+
+  document.getElementById("view-sub").classList.remove("active")
+  document.getElementById("view-mistress").classList.remove("active")
+
+  if(currentRole==="sub")
+    document.getElementById("view-sub").classList.add("active")
+  else
+    document.getElementById("view-mistress").classList.add("active")
+
+  document.getElementById("role-badge").textContent=currentRole
+
+  try {
+    await loadAll()
+  } catch(e) {
+    console.error("loadAll failed:", e)
+    alert("Failed to load data: " + e.message)
+  }
+
+  showScreen("app")
+}
+
+// Also fix the boot: if no supabase credentials, you need them before PIN works
+
+window.addEventListener("load",()=>{
+
+  let url=localStorage.getItem("sb_url")
+  let key=localStorage.getItem("sb_key")
+
+  if(!url || !key){
+    url=prompt("Supabase URL:")
+    key=prompt("Supabase Anon Key:")
+    if(url && key){
+      localStorage.setItem("sb_url",url)
+      localStorage.setItem("sb_key",key)
+    } else {
+      alert("Need Supabase credentials")
+      showScreen("pin")
+      return
+    }
+  }
+
+  connectSupabase(url,key)
+})
+
+</script>
+```
+
+The two problems were:
+1. **No error handling** in `enterApp` — if `loadAll` throws, `showScreen("app")` never runs, so you're stuck on "Loading..."
+2. **No way to set Supabase credentials** — without `sb_url`/`sb_key`, `sb` stays null and `verifyPin` fails
+User: rewrite complete html
+Model: ```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Devotion 🖤</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:#0a0a0a;
+  color:#f0e6e6;
+  font-family:Georgia,serif;
+  min-height:100vh;
+}
+
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+.screen-center{align-items:center;justify-content:center}
+
+.view{display:none}
+.view.active{display:block;padding:16px;flex:1}
+
+button{
+  cursor:pointer;
+  background:#2a1a1a;
+  color:#f0e6e6;
+  border:1px solid #4a2a2a;
+  padding:8px 14px;
+  border-radius:6px;
+  font-family:Georgia,serif;
+  font-size:14px;
+  transition:background .2s;
+}
+button:hover{background:#3a2222}
+
+input{
+  background:#1a1a1a;
+  color:#f0e6e6;
+  border:1px solid #4a2a2a;
+  padding:8px 12px;
+  border-radius:6px;
+  font-family:Georgia,serif;
+  font-size:16px;
+  outline:none;
+}
+input:focus{border-color:#8a4a4a}
+
+h2,h3{margin:12px 0 8px;color:#c9a0a0}
+
+.card{
+  background:#1a1212;
+  border:1px solid #2a1a1a;
+  border-radius:8px;
+  padding:12px;
+  margin:8px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.points-badge{
+  background:#2a1a1a;
+  border:1px solid #4a2a2a;
+  border-radius:20px;
+  padding:6px 14px;
+  font-size:14px;
+  color:#c9a0a0;
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 16px;
+  background:#110a0a;
+  border-bottom:1px solid #2a1a1a;
+}
+
+.header-left{font-size:18px;font-weight:bold;color:#c9a0a0}
+.header-right{display:flex;gap:8px;align-items:center}
+
+.empty{color:#5a4a4a;font-style:italic;padding:12px 0}
+
+#loading-text{color:#c9a0a0;font-size:18px}
+
+.setup-box{
+  text-align:center;
+  max-width:320px;
+  width:100%;
+  padding:24px;
+}
+.setup-box input{
+  display:block;
+  width:100%;
+  margin:8px 0;
+}
+.setup-box button{
+  margin-top:12px;
+  width:100%;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADING -->
+<div class="screen screen-center active" id="screen-loading">
+  <div id="loading-text">Loading...</div>
+</div>
+
+<!-- SETUP (Supabase creds) -->
+<div class="screen screen-center" id="screen-setup">
+  <div class="setup-box">
+    <h2>🖤 Setup</h2>
+    <p style="color:#5a4a4a;margin:8px 0">Enter your Supabase credentials</p>
+    <input id="setup-url" placeholder="Supabase URL"/>
+    <input id="setup-key" placeholder="Supabase Anon Key"/>
+    <button onclick="saveSetup()">Connect</button>
+  </div>
+</div>
+
+<!-- PIN -->
+<div class="screen screen-center" id="screen-pin">
+  <div class="setup-box">
+    <h2>🖤 Devotion</h2>
+    <p style="color:#5a4a4a;margin:8px 0">Enter your PIN</p>
+    <input id="pin-input" type="password" maxlength="6" placeholder="PIN"/>
+    <button onclick="verifyPin()">Enter</button>
+    <div style="margin-top:16px">
+      <button onclick="resetSetup()" style="font-size:12px;opacity:.5">Reset Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="screen" id="screen-app">
+
+  <header>
+    <div class="header-left">🖤 DEVOTION</div>
+    <div class="header-right">
+      <span class="points-badge" id="points-display">0 pts</span>
+      <span class="points-badge" id="role-badge">sub</span>
+      <button onclick="refreshAll()">↻</button>
+      <button onclick="lockApp()">🔒</button>
+    </div>
+  </header>
+
+  <div id="main" style="flex:1;overflow-y:auto">
+
+    <!-- SUB VIEW -->
+    <div class="view" id="view-sub">
+
+      <h3>📋 Chores</h3>
+      <div id="chores-list"></div>
+
+      <h3>🎁 Rewards</h3>
+      <div id="rewards-list"></div>
+
+      <h3>📜 History</h3>
+      <div id="log-list"></div>
+
+    </div>
+
+    <!-- MISTRESS VIEW -->
+    <div class="view" id="view-mistress">
+
+      <h3>📩 Chore Requests</h3>
+      <div id="chore-requests-list"></div>
+
+      <h3>📩 Reward Requests</h3>
+      <div id="reward-requests-list"></div>
+
+      <h3>📋 Manage Chores</h3>
+      <div id="manage-chores"></div>
+      <div style="margin:8px 0;display:flex;gap:8px">
+        <input id="new-chore-name" placeholder="Chore name"/>
+        <input id="new-chore-pts" placeholder="Pts" type="number" style="width:70px"/>
+        <button onclick="addChore()">Add</button>
+      </div>
+
+      <h3>🎁 Manage Rewards</h3>
+      <div id="manage-rewards"></div>
+      <div style="margin:8px 0;display:flex;gap:8px">
+        <input id="new-reward-name" placeholder="Reward name"/>
+        <input id="new-reward-pts" placeholder="Pts" type="number" style="width:70px"/>
+        <button onclick="addReward()">Add</button>
+      </div>
+
+      <h3>⚡ Adjust Points</h3>
+      <div style="display:flex;gap:8px;margin:8px 0">
+        <input id="adjust-pts" placeholder="±pts" type="number" style="width:80px"/>
+        <input id="adjust-reason" placeholder="Reason"/>
+        <button onclick="adjustPoints()">Apply</button>
+      </div>
+
+      <h3>📜 History</h3>
+      <div id="log-list-m"></div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+let sb = null;
+let currentRole = null;
+
+let state = {
+  points: 0,
+  chores: [],
+  rewards: [],
+  log: [],
+  rewardRequests: [],
+  choreRequests: []
+};
+
+/* ── SCREEN MANAGEMENT ── */
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+/* ── SETUP ── */
+
+function saveSetup() {
+  const url = document.getElementById("setup-url").value.trim();
+  const key = document.getElementById("setup-key").value.trim();
+  if (!url || !key) { alert("Both fields required"); return; }
+  localStorage.setItem("sb_url", url);
+  localStorage.setItem("sb_key", key);
+  connectSupabase(url, key);
+}
+
+function resetSetup() {
+  localStorage.removeItem("sb_url");
+  localStorage.removeItem("sb_key");
+  localStorage.removeItem("devotion_session");
+  sb = null;
+  showScreen("setup");
+}
+
+/* ── SUPABASE ── */
+
+function connectSupabase(url, key) {
+  try {
+    sb = supabase.createClient(url, key);
+    checkSession();
+  } catch (e) {
+    alert("Connection failed: " + e.message);
+    showScreen("setup");
+  }
+}
+
+/* ── SESSION ── */
+
+function checkSession() {
+  const s = JSON.parse(localStorage.getItem("devotion_session") || "null");
+  if (s && s.role && Date.now() < s.expires) {
+    currentRole = s.role;
+    enterApp();
+    return;
+  }
+  showScreen("pin");
+}
+
+function saveSession(role) {
+  localStorage.setItem("devotion_session", JSON.stringify({
+    role,
+    expires: Date.now() + 604800000
+  }));
+}
+
+function lockApp() {
+  localStorage.removeItem("devotion_session");
+  currentRole = null;
+  showScreen("pin");
+}
+
+/* ── PIN ── */
+
+async function verifyPin() {
+  if (!sb) { alert("Not connected to database"); return; }
+
+  const pin = document.getElementById("pin-input").value.trim();
+  if (!pin) { alert("Enter a PIN"); return; }
+
+  try {
+    const { data, error } = await sb
+      .from("devotion_pins")
+      .select("pin,role");
+
+    if (error) throw error;
+    if (!data || !data.length) { alert("No PINs configured in database"); return; }
+
+    const match = data.find(p => p.pin === pin);
+    if (!match) { alert("Wrong PIN"); return; }
+
+    currentRole = match.role;
+    saveSession(match.role);
+    document.getElementById("pin-input").value = "";
+    enterApp();
+
+  } catch (e) {
+    console.error(e);
+    alert("Database error: " + e.message);
+  }
+}
+
+/* ── ENTER APP ── */
+
+async function enterApp() {
+  showScreen("loading");
+
+  document.getElementById("view-sub").classList.remove("active");
+  document.getElementById("view-mistress").classList.remove("active");
+
+  if (currentRole === "sub")
+    document.getElementById("view-sub").classList.add("active");
+  else
+    document.getElementById("view-mistress").classList.add("active");
+
+  document.getElementById("role-badge").textContent = currentRole;
+
+  try {
+    await loadAll();
+  } catch (e) {
+    console.error("Load failed:", e);
+    alert("Failed to load data: " + e.message);
+  }
+
+  showScreen("app");
+}
+
+/* ── LOAD DATA ── */
+
+async function loadAll() {
+
+  const results = await Promise.allSettled([
+    sb.from("devotion_state").select("*").eq("id", "main").single(),
+    sb.from("devotion_chores").select("*").order("id"),
+    sb.from("devotion_rewards").select("*").order("id"),
+    sb.from("devotion_log").select("*").order("created_at", { ascending: false }).limit(50),
+    sb.from("devotion_requests").select("*").order("id", { ascending: false }),
+    sb.from("devotion_chore_requests").select("*").order("id", { ascending: false })
+  ]);
+
+  const val = (i) => results[i].status === "fulfilled" ? results[i].value : null;
+
+  const s  = val(0);
+  const c  = val(1);
+  const r  = val(2);
+  const l  = val(3);
+  const q  = val(4);
+  const cr = val(5);
+
+  if (s && s.data)  state.points = s.data.points || 0;
+  if (c && c.data)  state.chores = c.data;
+  if (r && r.data)  state.rewards = r.data;
+  if (l && l.data)  state.log = l.data;
+  if (q && q.data)  state.rewardRequests = q.data;
+  if (cr && cr.data) state.choreRequests = cr.data;
+
+  renderAll();
+}
+
+function refreshAll() { loadAll(); }
+
+/* ── RENDER ── */
+
+function renderAll() {
+  document.getElementById("points-display").textContent = state.points + " pts";
+  renderChores();
+  renderRewards();
+  renderLog();
+  renderChoreRequests();
+  renderRewardRequests();
+  renderManageChores();
+  renderManageRewards();
+}
+
+function renderChores() {
+  const el = document.getElementById("chores-list");
+  if (!state.chores.length) { el.innerHTML = '<div class="empty">No chores yet</div>'; return; }
+  el.innerHTML = state.chores.map(c => `
+    <div class="card">
+      <span>${c.name} <span style="color:#6a5a5a">(+${c.pts} pts)</span></span>
+      <button onclick="submitChore(${c.id})">✓ Done</button>
+    </div>
+  `).join("");
+}
+
+function renderRewards() {
+  const el = document.getElementById("rewards-list");
+  if (!state.rewards.length) { el.innerHTML = '<div class="empty">No rewards yet</div>'; return; }
+  el.innerHTML = state.rewards.map(r => `
+    <div class="card">
+      <span>${r.name} <span style="color:#6a5a5a">(${r.pts} pts)</span></span>
+      <button onclick="redeemReward(${r.id})" ${state.points < r.pts ? 'disabled style="opacity:.4"' : ''}>Redeem</button>
+    </div>
+  `).join("");
+}
+
+function renderLog() {
+  const el = document.getElementById("log-list");
+  const el2 = document.getElementById("log-list-m");
+  if (!state.log.length) {
+    const msg = '<div class="empty">No history</div>';
+    el.innerHTML = msg;
+    if (el2) el2.innerHTML = msg;
+    return;
+  }
+  const html = state.log.map(e => `
+    <div class="card">
+      <span>${e.text}</span>
+      <span style="color:${e.pts >= 0 ? '#6a9a6a' : '#9a6a6a'}">${e.pts >= 0 ? '+' : ''}${e.pts}</span>
+    </div>
+  `).join("");
+  el.innerHTML = html;
+  if (el2) el2.innerHTML = html;
+}
+
+function renderChoreRequests() {
+  const el = document.getElementById("chore-requests-list");
+  if (!el) return;
+  const pending = state.choreRequests.filter(r => r.status === "pending");
+  if (!pending.length) { el.innerHTML = '<div class="empty">No pending chore requests</div>'; return; }
+  el.innerHTML = pending.map(r => `
+    <div class="card">
+      <span>${r.chore_name} (+${r.chore_pts})</span>
+      <div>
+        <button onclick="approveChore(${r.id}, ${r.chore_pts})">✓</button>
+        <button onclick="denyChore(${r.id})">✗</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderRewardRequests() {
+  const el = document.getElementById("reward-requests-list");
+  if (!el) return;
+  const pending = state.rewardRequests.filter(r => r.status === "pending");
+  if (!pending.length) { el.innerHTML = '<div class="empty">No pending reward requests</div>'; return; }
+  el.innerHTML = pending.map(r => `
+    <div class="card">
+      <span>${r.reward_name} (−${r.reward_pts})</span>
+      <div>
+        <button onclick="approveReward(${r.id}, ${r.reward_pts})">✓</button>
+        <button onclick="denyReward(${r.id})">✗</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderManageChores() {
+  const el = document.getElementById("manage-chores");
+  if (!el) return;
+  if (!state.chores.length) { el.innerHTML = '<div class="empty">No chores</div>'; return; }
+  el.innerHTML = state.chores.map(c => `
+    <div class="card">
+      <span>${c.name} (+${c.pts})</span>
+      <button onclick="deleteChore(${c.id})">🗑</button>
+    </div>
+  `).join("");
+}
+
+function renderManageRewards() {
+  const el = document.getElementById("manage-rewards");
+  if (!el) return;
+  if (!state.rewards.length) { el.innerHTML = '<div class="empty">No rewards</div>'; return; }
+  el.innerHTML = state.rewards.map(r => `
+    <div class="card">
+      <span>${r.name} (${r.pts})</span>
+      <button onclick="deleteReward(${r.id})">🗑</button>
+    </div>
+  `).join("");
+}
+
+/* ── SUB ACTIONS ── */
+
+async function submitChore(id) {
+  const c = state.chores.find(x => x.id === id);
+  if (!c) return;
+  try {
+    await sb.from("devotion_chore_requests").insert({
+      chore_id: c.id,
+      chore_name: c.name,
+      chore_pts: c.pts,
+      status: "pending"
+    });
+    alert("Chore submitted for approval!");
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function redeemReward(id) {
+  const r = state.rewards.find(x => x.id === id);
+  if (!r) return;
+  if (state.points < r.pts) { alert("Not enough points"); return; }
+  try {
+    await sb.from("devotion_requests").insert({
+      reward_id: r.id,
+      reward_name: r.name,
+      reward_pts: r.pts,
+      status: "pending"
+    });
+    alert("Reward requested!");
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+/* ── MISTRESS ACTIONS ── */
+
+async function approveChore(id, pts) {
+  try {
+    await sb.from("devotion_chore_requests").update({ status: "approved" }).eq("id", id);
+    await sb.from("devotion_state").update({ points: state.points + pts }).eq("id", "main");
+    await sb.from("devotion_log").insert({ text: "Chore approved", pts: pts });
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function denyChore(id) {
+  try {
+    await sb.from("devotion_chore_requests").update({ status: "denied" }).eq("id", id);
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function approveReward(id, pts) {
+  try {
+    await sb.from("devotion_requests").update({ status: "approved" }).eq("id", id);
+    await sb.from("devotion_state").update({ points: state.points - pts }).eq("id", "main");
+    await sb.from("devotion_log").insert({ text: "Reward redeemed", pts: -pts });
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function denyReward(id) {
+  try {
+    await sb.from("devotion_requests").update({ status: "denied" }).eq("id", id);
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function addChore() {
+  const name = document.getElementById("new-chore-name").value.trim();
+  const pts = parseInt(document.getElementById("new-chore-pts").value);
+  if (!name || !pts) { alert("Name and points required"); return; }
+  try {
+    await sb.from("devotion_chores").insert({ name, pts });
+    document.getElementById("new-chore-name").value = "";
+    document.getElementById("new-chore-pts").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function addReward() {
+  const name = document.getElementById("new-reward-name").value.trim();
+  const pts = parseInt(document.getElementById("new-reward-pts").value);
+  if (!name || !pts) { alert("Name and points required"); return; }
+  try {
+    await sb.from("devotion_rewards").insert({ name, pts });
+    document.getElementById("new-reward-name").value = "";
+    document.getElementById("new-reward-pts").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteChore(id) {
+  if (!confirm("Delete this chore?")) return;
+  try {
+    await sb.from("devotion_chores").delete().eq("id", id);
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteReward(id) {
+  if (!confirm("Delete this reward?")) return;
+  try {
+    await sb.from("devotion_rewards").delete().eq("id", id);
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function adjustPoints() {
+  const pts = parseInt(document.getElementById("adjust-pts").value);
+  const reason = document.getElementById("adjust-reason").value.trim() || "Manual adjustment";
+  if (isNaN(pts) || pts === 0) { alert("Enter a point value"); return; }
+  try {
+    await sb.from("devotion_state").update({ points: state.points + pts }).eq("id", "main");
+    await sb.from("devotion_log").insert({ text: reason, pts });
+    document.getElementById("adjust-pts").value = "";
+    document.getElementById("adjust-reason").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+/* ── BOOT ── */
+
+window.addEventListener("load", () => {
+  if (!window.supabase) {
+    document.getElementById("loading-text").textContent = "Failed to load Supabase SDK";
+    return;
+  }
+
+  const url = localStorage.getItem("sb_url");
+  const key = localStorage.getItem("sb_key");
+
+  if (url && key) {
+    connectSupabase(url, key);
+  } else {
+    showScreen("setup");
+  }
+});
+
+</script>
+</body>
+</html>

@@ -377,10 +377,11 @@ function pinFail(msg){
 
 // ENTER APP
 async function enterApp(){
-  showScreen('loading');await loadAll();
+  showScreen('loading');
   document.getElementById('view-sub').classList.toggle('active',currentRole==='sub');
   document.getElementById('view-mistress').classList.toggle('active',currentRole==='mistress');
   document.getElementById('role-badge').textContent=currentRole==='sub'?'💋 Sub':'👑 Mistress';
+  await loadAll();
   showScreen('app');
 }
 

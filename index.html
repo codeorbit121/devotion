@@ -1042,3 +1042,1180 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+```
+
+**Key fixes:**
+
+1. **Setup screen** — prompts for Supabase URL/key instead of silently failing when they're missing
+2. **`Promise.allSettled`** instead of `Promise.all` — one failed table won't crash everything
+3. **try/catch everywhere** — `enterApp` always reaches `showScreen("app")` even if data loading fails
+4. **Null checks on `sb`** — `verifyPin` checks if connected before querying
+5. **Reset connection button** — lets you re-enter credentials if they're wrong
+6. **Added full Mistress functionality** — approve/deny requests, add/delete chores & rewards, adjust points
+User: I'll retrieve the contents of that file so I can review it for you.## Review of index.html
+
+Overall Assessment: The current implementation has several critical issues that prevent proper functioning:
+
+🔴 Critical Problems
+Missing Setup Screen
+
+No way to input Supabase credentials on first run
+If credentials aren't in localStorage, the app shows PIN screen but sb is null
+Results in crashes when trying to verify the PIN
+Stuck on "Loading..." Screen
+
+If loadAll() throws an error, there's no error handling
+showScreen("app") never executes, leaving user stuck indefinitely
+No feedback about what went wrong
+No Error Handling
+
+Database operations fail silently
+Users can't tell if something went wrong
+Especially problematic with Supabase connection issues
+Poor State Management
+
+Requests data (requests and choreRequests) are fetched but never rendered for the "Sub" role
+Only rendered for Mistress, and even then doesn't show approval status clearly
+Limited Functionality for Mistress
+
+Can't approve/deny individual requests
+Can't manually adjust points
+Limited control over the system
+✅ What Works
+Basic UI structure and styling is solid
+Session management and PIN verification logic is sound
+Supabase integration approach is reasonable
+Responsive role-based views (Sub vs Mistress)
+🔧 Recommended Fixes
+Would you like me to:
+
+Rewrite the complete HTML with proper error handling, setup screen, and full functionality?
+Just fix the critical issues (setup screen + error handling)?
+Add specific features like approval/denial system and points adjustment?
+Let me know what you'd prefer!
+Model: 
+My previous rewrite already addresses every issue in that review:
+
+- ✅ **Setup screen** for Supabase credentials
+- ✅ **try/catch + `Promise.allSettled`** so it never gets stuck on Loading
+- ✅ **Error handling** with user-facing alerts on every DB operation
+- ✅ **Full Mistress controls** — approve/deny chores & rewards, add/delete, adjust points
+- ✅ **Points display** visible to both roles
+- ✅ **Reset connection** button if credentials are wrong
+
+That complete HTML I sent is ready to use. Just make sure your Supabase tables exist:
+
+**Required tables:**
+
+| Table | Columns |
+|---|---|
+| `devotion_pins` | `pin` (text), `role` (text: "sub" or "mistress") |
+| `devotion_state` | `id` (text, value "main"), `points` (int) |
+| `devotion_chores` | `id` (int8 auto), `name` (text), `pts` (int) |
+| `devotion_rewards` | `id` (int8 auto), `name` (text), `pts` (int) |
+| `devotion_log` | `id` (int8 auto), `text` (text), `pts` (int), `created_at` (timestamptz default now) |
+| `devotion_requests` | `id` (int8 auto), `reward_id` (int), `reward_name` (text), `reward_pts` (int), `status` (text default "pending") |
+| `devotion_chore_requests` | `id` (int8 auto), `chore_id` (int), `chore_name` (text), `chore_pts` (int), `status` (text default "pending") |
+
+And insert one row into `devotion_state`:
+```sql
+INSERT INTO devotion_state (id, points) VALUES ('main', 0);
+```
+
+And your PINs:
+```sql
+INSERT INTO devotion_pins (pin, role) VALUES ('1234', 'sub');
+INSERT INTO devotion_pins (pin, role) VALUES ('5678', 'mistress');
+```
+
+Is there anything specific you'd like changed or added?
+User: for reference this is sql then why does app only keeps loading I'll retrieve the contents of that file so I can review it for you.## Review of index.html
+
+Overall Assessment: The current implementation has several critical issues that prevent proper functioning:
+
+🔴 Critical Problems
+Missing Setup Screen
+
+No way to input Supabase credentials on first run
+If credentials aren't in localStorage, the app shows PIN screen but sb is null
+Results in crashes when trying to verify the PIN
+Stuck on "Loading..." Screen
+
+If loadAll() throws an error, there's no error handling
+showScreen("app") never executes, leaving user stuck indefinitely
+No feedback about what went wrong
+No Error Handling
+
+Database operations fail silently
+Users can't tell if something went wrong
+Especially problematic with Supabase connection issues
+Poor State Management
+
+Requests data (requests and choreRequests) are fetched but never rendered for the "Sub" role
+Only rendered for Mistress, and even then doesn't show approval status clearly
+Limited Functionality for Mistress
+
+Can't approve/deny individual requests
+Can't manually adjust points
+Limited control over the system
+✅ What Works
+Basic UI structure and styling is solid
+Session management and PIN verification logic is sound
+Supabase integration approach is reasonable
+Responsive role-based views (Sub vs Mistress)
+🔧 Recommended Fixes
+Would you like me to:
+
+Rewrite the complete HTML with proper error handling, setup screen, and full functionality?
+Just fix the critical issues (setup screen + error handling)?
+Add specific features like approval/denial system and points adjustment?
+Let me know what you'd prefer!
+Model: 
+You didn't paste the SQL — the message just has the same review again.
+
+But the loading issue is simple: **are you using my rewritten HTML or still the original?**
+
+If you're using the original, that's the problem — it has no error handling and no setup screen. Replace it entirely with the complete rewrite I provided.
+
+If you ARE using my rewrite and it still loads forever, open **browser DevTools** (F12 → Console tab) and tell me what errors appear. Most likely:
+
+1. **Supabase
+User: -- Points & global state
+create table if not exists devotion_state (
+  id text primary key default 'main',
+  points integer not null default 0,
+  updated_at timestamptz default now()
+);
+insert into devotion_state (id, points) values ('main', 0) on conflict do nothing;
+
+-- Chores
+create table if not exists devotion_chores (
+  id bigint primary key generated always as identity,
+  name text not null,
+  pts integer not null default 10,
+  created_at timestamptz default now()
+);
+
+-- Rewards
+create table if not exists devotion_rewards (
+  id bigint primary key generated always as identity,
+  cat text not null default 'Custom',
+  name text not null,
+  pts integer not null default 10,
+  created_at timestamptz default now()
+);
+
+-- Activity log
+create table if not exists devotion_log (
+  id bigint primary key generated always as identity,
+  type text not null,
+  text text not null,
+  pts text default '',
+  created_at timestamptz default now()
+);
+
+-- Redemption requests
+create table if not exists devotion_requests (
+  id bigint primary key generated always as identity,
+  reward_id bigint,
+  reward_name text not null,
+  reward_cat text not null,
+  reward_pts integer not null,
+  status text not null default 'pending',
+  created_at timestamptz default now()
+);
+
+-- Chore completion requests
+create table if not exists devotion_chore_requests (
+  id bigint primary key generated always as identity,
+  chore_id bigint not null,
+  chore_name text not null,
+  chore_pts integer not null,
+  status text not null default 'pending',
+  created_at timestamptz default now()
+);
+
+-- PIN authentication
+create table if not exists devotion_pins (
+  role text primary key,
+  pin text not null,
+  updated_at timestamptz default now()
+);
+
+-- Disable RLS on all tables
+alter table devotion_state          disable row level security;
+alter table devotion_chores         disable row level security;
+alter table devotion_rewards        disable row level security;
+alter table devotion_log            disable row level security;
+alter table devotion_requests       disable row level security;
+alter table devotion_chore_requests disable row level security;
+alter table devotion_pins           disable row level security;
+
+-- Default PINs (change in app after setup!)
+insert into devotion_pins (role, pin) values ('sub', '1234') on conflict do nothing;
+insert into devotion_pins (role, pin) values ('mistress', '9999') on conflict do nothing;
+
+-- Seed default chores
+insert into devotion_chores (name, pts) values
+  ('Wash dishes', 5),
+  ('Vacuum floors', 10),
+  ('Clean bathroom', 15),
+  ('Do laundry', 10),
+  ('Cook dinner', 15),
+  ('Take out trash', 5),
+  ('Mop floors', 10),
+  ('Clean kitchen', 15),
+  ('Grocery shopping', 20),
+  ('Iron clothes', 10)
+  on conflict do nothing;
+
+-- Seed default rewards
+insert into devotion_rewards (cat, name, pts) values
+  ('Outfit',     'Choose a lingerie/clothing item to wear briefly', 10),
+  ('Outfit',     'Pick full outfit for a play session', 20),
+  ('Outfit',     'Select entire evening outfit', 30),
+  ('Outfit',     'Pick outfit AND hairstyle for date night', 40),
+  ('JOI',        'Basic teasing JOI with edging only', 15),
+  ('JOI',        'Intense JOI — multiple edges, strict pacing', 25),
+  ('JOI',        'Edged to the brink — no release', 30),
+  ('JOI',        'Guided JOI blindfolded (sensory only)', 35),
+  ('Attention',  '10 min focused teasing or touching', 15),
+  ('Attention',  '15 min cuddling, kissing, or body worship', 20),
+  ('Attention',  'Extended verbal praise or humiliation session', 25),
+  ('Attention',  'Full sensory play — blindfold, feathers, ice, wax', 40),
+  ('Attention',  'Roleplay scenario of your choosing', 45),
+  ('Cum',        'Controlled orgasm on command (countdown or rules)', 20),
+  ('Cum',        'Release allowed — but must hold completely still', 25),
+  ('Cum',        'Full unrestricted orgasm', 30),
+  ('Cum',        'Multiple orgasms in one session', 50),
+  ('Finish',     'Finish on chosen body part', 25),
+  ('Finish',     'Finish on face', 40),
+  ('Power Flip', 'Give ONE command she must follow (within limits)', 35),
+  ('Power Flip', 'Switch night — you take full control', 75),
+  ('Power Flip', 'Private dance or striptease', 40),
+  ('Lifestyle',  'Skip all chores for one full day', 25),
+  ('Lifestyle',  'Breakfast in bed made by her', 20),
+  ('Lifestyle',  'Handwritten praise letter about you', 15),
+  ('Lifestyle',  'Full spa massage night', 35),
+  ('Lifestyle',  'She plans a surprise date', 60),
+  ('Luxury',     'Fantasy roleplay scenario you''ve always wanted', 100),
+  ('Luxury',     'Overnight getaway or special experience', 150);
+Model: 
+I see the mismatches between my rewrite and your actual SQL schema. Here's the corrected version:
+
+**Key differences in your SQL:**
+- `devotion_log.pts` is **text**, not integer
+- `devotion_log` has a `type` column
+- `devotion_rewards` has a `cat` column
+- `devotion_requests` has `reward_cat` column
+- `devotion_pins` uses `role` as primary key (not separate id)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Devotion 🖤</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:#0a0a0a;
+  color:#f0e6e6;
+  font-family:Georgia,serif;
+  min-height:100vh;
+}
+
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.screen-center{align-items:center;justify-content:center}
+
+.view{display:none}
+.view.active{display:block;padding:16px;flex:1;overflow-y:auto}
+
+button{
+  cursor:pointer;
+  background:#2a1a1a;
+  color:#f0e6e6;
+  border:1px solid #4a2a2a;
+  padding:8px 14px;
+  border-radius:6px;
+  font-family:Georgia,serif;
+  font-size:14px;
+  transition:background .2s;
+}
+button:hover{background:#3a2222}
+button:disabled{opacity:.4;cursor:default}
+
+input,select{
+  background:#1a1a1a;
+  color:#f0e6e6;
+  border:1px solid #4a2a2a;
+  padding:8px 12px;
+  border-radius:6px;
+  font-family:Georgia,serif;
+  font-size:16px;
+  outline:none;
+}
+input:focus,select:focus{border-color:#8a4a4a}
+
+h2,h3{margin:16px 0 8px;color:#c9a0a0}
+
+.card{
+  background:#1a1212;
+  border:1px solid #2a1a1a;
+  border-radius:8px;
+  padding:12px;
+  margin:8px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.card-info{flex:1;min-width:150px}
+.card-actions{display:flex;gap:6px}
+.card-cat{font-size:11px;color:#6a5a5a;text-transform:uppercase;letter-spacing:1px}
+
+.points-badge{
+  background:#2a1a1a;
+  border:1px solid #4a2a2a;
+  border-radius:20px;
+  padding:6px 14px;
+  font-size:14px;
+  color:#c9a0a0;
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 16px;
+  background:#110a0a;
+  border-bottom:1px solid #2a1a1a;
+  flex-shrink:0;
+}
+.header-left{font-size:18px;font-weight:bold;color:#c9a0a0}
+.header-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.empty{color:#5a4a4a;font-style:italic;padding:12px 0}
+
+#loading-text{color:#c9a0a0;font-size:18px}
+
+.setup-box{
+  text-align:center;
+  max-width:340px;
+  width:100%;
+  padding:24px;
+}
+.setup-box input{display:block;width:100%;margin:8px 0}
+.setup-box button{margin-top:12px;width:100%}
+
+.add-row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+.add-row input,.add-row select{flex:1;min-width:100px}
+
+.tab-bar{
+  display:flex;
+  gap:0;
+  border-bottom:1px solid #2a1a1a;
+  background:#110a0a;
+  flex-shrink:0;
+}
+.tab-bar button{
+  flex:1;
+  border:none;
+  border-bottom:2px solid transparent;
+  border-radius:0;
+  padding:10px;
+  background:transparent;
+  color:#6a5a5a;
+  font-size:13px;
+}
+.tab-bar button.active{
+  color:#c9a0a0;
+  border-bottom-color:#8a4a4a;
+}
+
+.section{display:none}
+.section.active{display:block}
+
+.status-pending{color:#c9a06a}
+.status-approved{color:#6a9a6a}
+.status-denied{color:#9a6a6a}
+
+.pts-pos{color:#6a9a6a}
+.pts-neg{color:#9a6a6a}
+</style>
+</head>
+
+<body>
+
+<!-- LOADING -->
+<div class="screen screen-center active" id="screen-loading">
+  <div id="loading-text">🖤 Loading...</div>
+</div>
+
+<!-- SETUP -->
+<div class="screen screen-center" id="screen-setup">
+  <div class="setup-box">
+    <h2>🖤 First Time Setup</h2>
+    <p style="color:#5a4a4a;margin:8px 0">Enter your Supabase credentials</p>
+    <input id="setup-url" placeholder="Supabase Project URL"/>
+    <input id="setup-key" placeholder="Supabase Anon Key"/>
+    <button onclick="saveSetup()">Connect</button>
+  </div>
+</div>
+
+<!-- PIN -->
+<div class="screen screen-center" id="screen-pin">
+  <div class="setup-box">
+    <h2>🖤 Devotion</h2>
+    <p style="color:#5a4a4a;margin:8px 0">Enter your PIN</p>
+    <input id="pin-input" type="password" maxlength="6" placeholder="PIN"
+           onkeydown="if(event.key==='Enter')verifyPin()"/>
+    <button onclick="verifyPin()">Enter</button>
+    <div style="margin-top:20px">
+      <button onclick="resetSetup()" style="font-size:11px;opacity:.4;border:none">Reset Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="screen" id="screen-app">
+
+  <header>
+    <div class="header-left">🖤 DEVOTION</div>
+    <div class="header-right">
+      <span class="points-badge" id="points-display">0 pts</span>
+      <span class="points-badge" id="role-badge">sub</span>
+      <button onclick="refreshAll()" title="Refresh">↻</button>
+      <button onclick="lockApp()" title="Lock">🔒</button>
+    </div>
+  </header>
+
+  <!-- SUB VIEW -->
+  <div class="view" id="view-sub">
+
+    <div class="tab-bar" id="sub-tabs">
+      <button class="active" onclick="showSubTab('chores')">Chores</button>
+      <button onclick="showSubTab('rewards')">Rewards</button>
+      <button onclick="showSubTab('my-requests')">My Requests</button>
+      <button onclick="showSubTab('history')">History</button>
+    </div>
+
+    <div style="padding:12px">
+      <div class="section active" id="sub-chores">
+        <h3>📋 Available Chores</h3>
+        <div id="chores-list"></div>
+      </div>
+
+      <div class="section" id="sub-rewards">
+        <h3>🎁 Available Rewards</h3>
+        <div id="rewards-list"></div>
+      </div>
+
+      <div class="section" id="sub-my-requests">
+        <h3>📩 My Chore Submissions</h3>
+        <div id="my-chore-requests"></div>
+        <h3>📩 My Reward Requests</h3>
+        <div id="my-reward-requests"></div>
+      </div>
+
+      <div class="section" id="sub-history">
+        <h3>📜 History</h3>
+        <div id="log-list"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MISTRESS VIEW -->
+  <div class="view" id="view-mistress">
+
+    <div class="tab-bar" id="mistress-tabs">
+      <button class="active" onclick="showMistressTab('inbox')">Inbox</button>
+      <button onclick="showMistressTab('manage')">Manage</button>
+      <button onclick="showMistressTab('points')">Points</button>
+      <button onclick="showMistressTab('m-history')">History</button>
+    </div>
+
+    <div style="padding:12px">
+
+      <div class="section active" id="mistress-inbox">
+        <h3>📩 Pending Chore Requests</h3>
+        <div id="chore-requests-list"></div>
+        <h3>📩 Pending Reward Requests</h3>
+        <div id="reward-requests-list"></div>
+      </div>
+
+      <div class="section" id="mistress-manage">
+        <h3>📋 Chores</h3>
+        <div id="manage-chores"></div>
+        <div class="add-row">
+          <input id="new-chore-name" placeholder="Chore name"/>
+          <input id="new-chore-pts" placeholder="Pts" type="number" style="width:70px"/>
+          <button onclick="addChore()">+ Add</button>
+        </div>
+
+        <h3>🎁 Rewards</h3>
+        <div id="manage-rewards"></div>
+        <div class="add-row">
+          <select id="new-reward-cat">
+            <option>Custom</option>
+            <option>Outfit</option>
+            <option>JOI</option>
+            <option>Attention</option>
+            <option>Cum</option>
+            <option>Finish</option>
+            <option>Power Flip</option>
+            <option>Lifestyle</option>
+            <option>Luxury</option>
+          </select>
+          <input id="new-reward-name" placeholder="Reward name"/>
+          <input id="new-reward-pts" placeholder="Pts" type="number" style="width:70px"/>
+          <button onclick="addReward()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="section" id="mistress-points">
+        <h3>⚡ Current Points: <span id="m-points-val">0</span></h3>
+        <div class="add-row">
+          <input id="adjust-pts" placeholder="±points" type="number" style="width:90px"/>
+          <input id="adjust-reason" placeholder="Reason"/>
+          <button onclick="adjustPoints()">Apply</button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button onclick="quickAdjust(5)">+5</button>
+          <button onclick="quickAdjust(10)">+10</button>
+          <button onclick="quickAdjust(25)">+25</button>
+          <button onclick="quickAdjust(-5)">−5</button>
+          <button onclick="quickAdjust(-10)">−10</button>
+          <button onclick="quickAdjust(-25)">−25</button>
+        </div>
+      </div>
+
+      <div class="section" id="mistress-m-history">
+        <h3>📜 Full History</h3>
+        <div id="log-list-m"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+/* ══════════════════════════════════════
+   GLOBALS
+   ══════════════════════════════════════ */
+
+let sb = null;
+let currentRole = null;
+
+let state = {
+  points: 0,
+  chores: [],
+  rewards: [],
+  log: [],
+  rewardRequests: [],
+  choreRequests: []
+};
+
+/* ══════════════════════════════════════
+   SCREENS
+   ══════════════════════════════════════ */
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+/* ══════════════════════════════════════
+   TABS
+   ══════════════════════════════════════ */
+
+function showSubTab(name) {
+  document.querySelectorAll("#view-sub .section").forEach(s => s.classList.remove("active"));
+  document.getElementById("sub-" + name).classList.add("active");
+  document.querySelectorAll("#sub-tabs button").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+}
+
+function showMistressTab(name) {
+  document.querySelectorAll("#view-mistress .section").forEach(s => s.classList.remove("active"));
+  document.getElementById("mistress-" + name).classList.add("active");
+  document.querySelectorAll("#mistress-tabs button").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+}
+
+/* ══════════════════════════════════════
+   SETUP / CONNECTION
+   ══════════════════════════════════════ */
+
+function saveSetup() {
+  const url = document.getElementById("setup-url").value.trim();
+  const key = document.getElementById("setup-key").value.trim();
+  if (!url || !key) { alert("Both fields are required"); return; }
+  localStorage.setItem("sb_url", url);
+  localStorage.setItem("sb_key", key);
+  connectSupabase(url, key);
+}
+
+function resetSetup() {
+  localStorage.removeItem("sb_url");
+  localStorage.removeItem("sb_key");
+  localStorage.removeItem("devotion_session");
+  sb = null;
+  showScreen("setup");
+}
+
+function connectSupabase(url, key) {
+  try {
+    sb = supabase.createClient(url, key);
+    checkSession();
+  } catch (e) {
+    alert("Connection failed: " + e.message);
+    showScreen("setup");
+  }
+}
+
+/* ══════════════════════════════════════
+   SESSION / AUTH
+   ══════════════════════════════════════ */
+
+function checkSession() {
+  const s = JSON.parse(localStorage.getItem("devotion_session") || "null");
+  if (s && s.role && Date.now() < s.expires) {
+    currentRole = s.role;
+    enterApp();
+    return;
+  }
+  showScreen("pin");
+}
+
+function saveSession(role) {
+  localStorage.setItem("devotion_session", JSON.stringify({
+    role,
+    expires: Date.now() + 604800000
+  }));
+}
+
+function lockApp() {
+  localStorage.removeItem("devotion_session");
+  currentRole = null;
+  showScreen("pin");
+}
+
+async function verifyPin() {
+  if (!sb) { alert("Not connected. Reset and re-enter credentials."); return; }
+
+  const pin = document.getElementById("pin-input").value.trim();
+  if (!pin) { alert("Enter a PIN"); return; }
+
+  try {
+    const { data, error } = await sb.from("devotion_pins").select("pin,role");
+
+    if (error) throw error;
+    if (!data || !data.length) { alert("No PINs found in database. Check your Supabase setup."); return; }
+
+    const match = data.find(p => p.pin === pin);
+    if (!match) { alert("Wrong PIN"); return; }
+
+    currentRole = match.role;
+    saveSession(match.role);
+    document.getElementById("pin-input").value = "";
+    enterApp();
+
+  } catch (e) {
+    console.error("PIN verification error:", e);
+    alert("Database error: " + (e.message || e));
+  }
+}
+
+/* ══════════════════════════════════════
+   ENTER APP
+   ══════════════════════════════════════ */
+
+async function enterApp() {
+  showScreen("loading");
+
+  document.getElementById("view-sub").classList.remove("active");
+  document.getElementById("view-mistress").classList.remove("active");
+
+  if (currentRole === "sub") {
+    document.getElementById("view-sub").classList.add("active");
+  } else {
+    document.getElementById("view-mistress").classList.add("active");
+  }
+
+  document.getElementById("role-badge").textContent = currentRole;
+
+  try {
+    await loadAll();
+  } catch (e) {
+    console.error("Load error:", e);
+  }
+
+  // ALWAYS show app screen even if load partially fails
+  showScreen("app");
+}
+
+/* ══════════════════════════════════════
+   LOAD ALL DATA
+   ══════════════════════════════════════ */
+
+async function loadAll() {
+  const results = await Promise.allSettled([
+    sb.from("devotion_state").select("*").eq("id", "main").single(),
+    sb.from("devotion_chores").select("*").order("id"),
+    sb.from("devotion_rewards").select("*").order("cat,pts"),
+    sb.from("devotion_log").select("*").order("created_at", { ascending: false }).limit(100),
+    sb.from("devotion_requests").select("*").order("created_at", { ascending: false }),
+    sb.from("devotion_chore_requests").select("*").order("created_at", { ascending: false })
+  ]);
+
+  const get = (i) => {
+    if (results[i].status === "fulfilled" && results[i].value.data) {
+      return results[i].value.data;
+    }
+    if (results[i].status === "fulfilled" && results[i].value.error) {
+      console.warn("Table query error:", results[i].value.error.message);
+    }
+    return null;
+  };
+
+  const s = get(0);
+  if (s) state.points = s.points || 0;
+
+  const c = get(1);
+  if (c) state.chores = c;
+
+  const r = get(2);
+  if (r) state.rewards = r;
+
+  const l = get(3);
+  if (l) state.log = l;
+
+  const q = get(4);
+  if (q) state.rewardRequests = q;
+
+  const cr = get(5);
+  if (cr) state.choreRequests = cr;
+
+  renderAll();
+}
+
+async function refreshAll() {
+  try { await loadAll(); } catch(e) { console.error(e); }
+}
+
+/* ══════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════ */
+
+function renderAll() {
+  document.getElementById("points-display").textContent = state.points + " pts";
+  document.getElementById("m-points-val").textContent = state.points;
+
+  renderChores();
+  renderRewards();
+  renderLog();
+  renderMyChoreRequests();
+  renderMyRewardRequests();
+  renderChoreRequests();
+  renderRewardRequests();
+  renderManageChores();
+  renderManageRewards();
+}
+
+/* — Sub: Chores — */
+function renderChores() {
+  const el = document.getElementById("chores-list");
+  if (!state.chores.length) { el.innerHTML = '<div class="empty">No chores available</div>'; return; }
+  el.innerHTML = state.chores.map(c => `
+    <div class="card">
+      <div class="card-info">
+        <div>${c.name}</div>
+        <div style="color:#6a9a6a;font-size:13px">+${c.pts} pts</div>
+      </div>
+      <div class="card-actions">
+        <button onclick="submitChore(${c.id})">✓ Done</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* — Sub: Rewards — */
+function renderRewards() {
+  const el = document.getElementById("rewards-list");
+  if (!state.rewards.length) { el.innerHTML = '<div class="empty">No rewards available</div>'; return; }
+
+  // Group by category
+  const groups = {};
+  state.rewards.forEach(r => {
+    if (!groups[r.cat]) groups[r.cat] = [];
+    groups[r.cat].push(r);
+  });
+
+  let html = "";
+  for (const cat of Object.keys(groups).sort()) {
+    html += `<h3 style="font-size:14px;margin-top:16px;color:#8a6a6a">${cat}</h3>`;
+    html += groups[cat].map(r => `
+      <div class="card">
+        <div class="card-info">
+          <div>${r.name}</div>
+          <div style="color:#9a6a6a;font-size:13px">${r.pts} pts</div>
+        </div>
+        <div class="card-actions">
+          <button onclick="redeemReward(${r.id})" ${state.points < r.pts ? 'disabled' : ''}>
+            ${state.points < r.pts ? '🔒' : '🎁'} Redeem
+          </button>
+        </div>
+      </div>
+    `).join("");
+  }
+  el.innerHTML = html;
+}
+
+/* — Sub: My Requests — */
+function renderMyChoreRequests() {
+  const el = document.getElementById("my-chore-requests");
+  if (!el) return;
+  if (!state.choreRequests.length) { el.innerHTML = '<div class="empty">No submissions yet</div>'; return; }
+  el.innerHTML = state.choreRequests.map(r => `
+    <div class="card">
+      <div class="card-info">
+        <div>${r.chore_name} (+${r.chore_pts})</div>
+        <div class="status-${r.status}" style="font-size:13px">${r.status}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderMyRewardRequests() {
+  const el = document.getElementById("my-reward-requests");
+  if (!el) return;
+  if (!state.rewardRequests.length) { el.innerHTML = '<div class="empty">No requests yet</div>'; return; }
+  el.innerHTML = state.rewardRequests.map(r => `
+    <div class="card">
+      <div class="card-info">
+        <div>${r.reward_name} (${r.reward_pts} pts)</div>
+        <div class="card-cat">${r.reward_cat}</div>
+        <div class="status-${r.status}" style="font-size:13px">${r.status}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* — History — */
+function renderLog() {
+  const el = document.getElementById("log-list");
+  const el2 = document.getElementById("log-list-m");
+
+  if (!state.log.length) {
+    const msg = '<div class="empty">No history yet</div>';
+    if (el) el.innerHTML = msg;
+    if (el2) el2.innerHTML = msg;
+    return;
+  }
+
+  const html = state.log.map(e => {
+    const ptsStr = e.pts || "";
+    const isNeg = ptsStr.startsWith("-");
+    return `
+      <div class="card">
+        <div class="card-info">
+          <div>${e.text}</div>
+          <div style="font-size:11px;color:#5a4a4a">${e.type || ""} · ${new Date(e.created_at).toLocaleString()}</div>
+        </div>
+        <span class="${isNeg ? 'pts-neg' : 'pts-pos'}">${ptsStr}</span>
+      </div>
+    `;
+  }).join("");
+
+  if (el) el.innerHTML = html;
+  if (el2) el2.innerHTML = html;
+}
+
+/* — Mistress: Pending Requests — */
+function renderChoreRequests() {
+  const el = document.getElementById("chore-requests-list");
+  if (!el) return;
+  const pending = state.choreRequests.filter(r => r.status === "pending");
+  if (!pending.length) { el.innerHTML = '<div class="empty">No pending chore requests</div>'; return; }
+  el.innerHTML = pending.map(r => `
+    <div class="card">
+      <div class="card-info">
+        <div>${r.chore_name}</div>
+        <div style="color:#6a9a6a;font-size:13px">+${r.chore_pts} pts</div>
+      </div>
+      <div class="card-actions">
+        <button onclick="approveChore(${r.id}, ${r.chore_pts})" style="background:#1a2a1a;border-color:#2a4a2a">✓</button>
+        <button onclick="denyChore(${r.id})" style="background:#2a1a1a;border-color:#4a2a2a">✗</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderRewardRequests() {
+  const el = document.getElementById("reward-requests-list");
+  if (!el) return;
+  const pending = state.rewardRequests.filter(r => r.status === "pending");
+  if (!pending.length) { el.innerHTML = '<div class="empty">No pending reward requests</div>'; return; }
+  el.innerHTML = pending.map(r => `
+    <div class="card">
+      <div class="card-info">
+        <div>${r.reward_name}</div>
+        <div class="card-cat">${r.reward_cat}</div>
+        <div style="color:#9a6a6a;font-size:13px">−${r.reward_pts} pts</div>
+      </div>
+      <div class="card-actions">
+        <button onclick="approveReward(${r.id}, ${r.reward_pts})" style="background:#1a2a1a;border-color:#2a4a2a">✓</button>
+        <button onclick="denyReward(${r.id})" style="background:#2a1a1a;border-color:#4a2a2a">✗</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* — Mistress: Manage — */
+function renderManageChores() {
+  const el = document.getElementById("manage-chores");
+  if (!el) return;
+  if (!state.chores.length) { el.innerHTML = '<div class="empty">No chores</div>'; return; }
+  el.innerHTML = state.chores.map(c => `
+    <div class="card">
+      <div class="card-info">
+        <div>${c.name} <span style="color:#6a5a5a">(+${c.pts})</span></div>
+      </div>
+      <div class="card-actions">
+        <button onclick="deleteChore(${c.id})">🗑</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderManageRewards() {
+  const el = document.getElementById("manage-rewards");
+  if (!el) return;
+  if (!state.rewards.length) { el.innerHTML = '<div class="empty">No rewards</div>'; return; }
+
+  const groups = {};
+  state.rewards.forEach(r => {
+    if (!groups[r.cat]) groups[r.cat] = [];
+    groups[r.cat].push(r);
+  });
+
+  let html = "";
+  for (const cat of Object.keys(groups).sort()) {
+    html += `<div style="font-size:12px;color:#6a5a5a;margin-top:12px;text-transform:uppercase;letter-spacing:1px">${cat}</div>`;
+    html += groups[cat].map(r => `
+      <div class="card">
+        <div class="card-info">
+          <div>${r.name} <span style="color:#6a5a5a">(${r.pts} pts)</span></div>
+        </div>
+        <div class="card-actions">
+          <button onclick="deleteReward(${r.id})">🗑</button>
+        </div>
+      </div>
+    `).join("");
+  }
+  el.innerHTML = html;
+}
+
+/* ══════════════════════════════════════
+   SUB ACTIONS
+   ══════════════════════════════════════ */
+
+async function submitChore(id) {
+  const c = state.chores.find(x => x.id === id);
+  if (!c) return;
+  try {
+    const { error } = await sb.from("devotion_chore_requests").insert({
+      chore_id: c.id,
+      chore_name: c.name,
+      chore_pts: c.pts,
+      status: "pending"
+    });
+    if (error) throw error;
+    alert("✓ Chore submitted for approval!");
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function redeemReward(id) {
+  const r = state.rewards.find(x => x.id === id);
+  if (!r) return;
+  if (state.points < r.pts) { alert("Not enough points!"); return; }
+  try {
+    const { error } = await sb.from("devotion_requests").insert({
+      reward_id: r.id,
+      reward_name: r.name,
+      reward_cat: r.cat,
+      reward_pts: r.pts,
+      status: "pending"
+    });
+    if (error) throw error;
+    alert("✓ Reward requested!");
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+/* ══════════════════════════════════════
+   MISTRESS ACTIONS
+   ══════════════════════════════════════ */
+
+async function approveChore(id, pts) {
+  try {
+    const { error: e1 } = await sb.from("devotion_chore_requests").update({ status: "approved" }).eq("id", id);
+    if (e1) throw e1;
+
+    const newPts = state.points + pts;
+    const { error: e2 } = await sb.from("devotion_state").update({ points: newPts, updated_at: new Date().toISOString() }).eq("id", "main");
+    if (e2) throw e2;
+
+    const { error: e3 } = await sb.from("devotion_log").insert({
+      type: "chore",
+      text: "Chore approved: +" + pts + " pts",
+      pts: "+" + pts
+    });
+    if (e3) throw e3;
+
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function denyChore(id) {
+  try {
+    const { error } = await sb.from("devotion_chore_requests").update({ status: "denied" }).eq("id", id);
+    if (error) throw error;
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function approveReward(id, pts) {
+  try {
+    const { error: e1 } = await sb.from("devotion_requests").update({ status: "approved" }).eq("id", id);
+    if (e1) throw e1;
+
+    const newPts = state.points - pts;
+    const { error: e2 } = await sb.from("devotion_state").update({ points: newPts, updated_at: new Date().toISOString() }).eq("id", "main");
+    if (e2) throw e2;
+
+    const { error: e3 } = await sb.from("devotion_log").insert({
+      type: "reward",
+      text: "Reward redeemed: −" + pts + " pts",
+      pts: "-" + pts
+    });
+    if (e3) throw e3;
+
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function denyReward(id) {
+  try {
+    const { error } = await sb.from("devotion_requests").update({ status: "denied" }).eq("id", id);
+    if (error) throw error;
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function addChore() {
+  const name = document.getElementById("new-chore-name").value.trim();
+  const pts = parseInt(document.getElementById("new-chore-pts").value);
+  if (!name || !pts || pts <= 0) { alert("Valid name and points required"); return; }
+  try {
+    const { error } = await sb.from("devotion_chores").insert({ name, pts });
+    if (error) throw error;
+    document.getElementById("new-chore-name").value = "";
+    document.getElementById("new-chore-pts").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function addReward() {
+  const cat = document.getElementById("new-reward-cat").value;
+  const name = document.getElementById("new-reward-name").value.trim();
+  const pts = parseInt(document.getElementById("new-reward-pts").value);
+  if (!name || !pts || pts <= 0) { alert("Valid name and points required"); return; }
+  try {
+    const { error } = await sb.from("devotion_rewards").insert({ cat, name, pts });
+    if (error) throw error;
+    document.getElementById("new-reward-name").value = "";
+    document.getElementById("new-reward-pts").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteChore(id) {
+  if (!confirm("Delete this chore?")) return;
+  try {
+    const { error } = await sb.from("devotion_chores").delete().eq("id", id);
+    if (error) throw error;
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteReward(id) {
+  if (!confirm("Delete this reward?")) return;
+  try {
+    const { error } = await sb.from("devotion_rewards").delete().eq("id", id);
+    if (error) throw error;
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function adjustPoints() {
+  const pts = parseInt(document.getElementById("adjust-pts").value);
+  const reason = document.getElementById("adjust-reason").value.trim() || "Manual adjustment";
+  if (isNaN(pts) || pts === 0) { alert("Enter a non-zero point value"); return; }
+  try {
+    const newPts = state.points + pts;
+    const { error: e1 } = await sb.from("devotion_state").update({ points: newPts, updated_at: new Date().toISOString() }).eq("id", "main");
+    if (e1) throw e1;
+
+    const { error: e2 } = await sb.from("devotion_log").insert({
+      type: "adjust",
+      text: reason,
+      pts: (pts > 0 ? "+" : "") + pts
+    });
+    if (e2) throw e2;
+
+    document.getElementById("adjust-pts").value = "";
+    document.getElementById("adjust-reason").value = "";
+    await loadAll();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function quickAdjust(pts) {
+  document.getElementById("adjust-pts").value = pts;
+  document.getElementById("adjust-reason").value = "Quick " + (pts > 0 ? "bonus" : "penalty");
+  await adjustPoints();
+}
+
+/* ══════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════ */
+
+window.addEventListener("load", () => {
+  if (!window.supabase) {
+    document.getElementById("loading-text").textContent = "❌ Failed to load Supabase SDK. Check your internet connection.";
+    return;
+  }
+
+  const url = localStorage.getItem("sb_url");
+  const key = localStorage.getItem("sb_key");
+
+  if (url && key) {
+    connectSupabase(url, key);
+  } else {
+    showScreen("setup");
+  }
+});
+
+</script>
+</body>
+</html>

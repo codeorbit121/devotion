@@ -7,153 +7,40 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Devotion"/>
   <meta name="theme-color" content="#0a0a0a"/>
-  <title>Devotion 🖤</title>
+  <title>Devotion</title>
+  <link rel="stylesheet" href="css/styles.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    body{background:#0a0a0a;font-family:Georgia,serif;color:#f0e6e6;min-height:100vh;
-      background-image:radial-gradient(ellipse at 20% 50%,rgba(180,0,30,.08) 0%,transparent 60%),
-      radial-gradient(ellipse at 80% 20%,rgba(200,0,50,.06) 0%,transparent 50%)}
-    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a0a0a}
-    ::-webkit-scrollbar-thumb{background:#c9184a;border-radius:2px}
-    .screen{display:none;min-height:100vh}.screen.active{display:flex;flex-direction:column}
-    #screen-loading{align-items:center;justify-content:center;gap:16px}
-    .spinner{width:40px;height:40px;border:2px solid #1a0010;border-top-color:#c9184a;border-radius:50%;animation:spin .8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    #screen-setup{align-items:center;justify-content:center;padding:24px}
-    .setup-box{background:#120008;border:1px solid #c9184a;border-radius:16px;padding:28px;width:100%;max-width:420px;box-shadow:0 0 40px rgba(200,0,50,.3)}
-    .setup-box h2{color:#ff4d6d;font-size:18px;margin-bottom:6px;letter-spacing:1px}
-    .setup-box p{color:#6b2030;font-size:12px;line-height:1.6;margin-bottom:20px}
-    .setup-box label{display:block;font-size:10px;color:#6b2030;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;margin-top:14px}
-    .setup-box input{width:100%;background:#0a0005;border:1px solid #3a0020;border-radius:8px;padding:11px 13px;color:#f0e6e6;font-family:Georgia,serif;font-size:13px;outline:none}
-    .setup-box input:focus{border-color:#c9184a}
-    .btn-primary{width:100%;margin-top:20px;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;font-family:Georgia,serif}
-    .setup-note{font-size:11px;color:#3a0015;margin-top:12px;line-height:1.5;text-align:center}
-    #screen-pin{align-items:center;justify-content:center;padding:24px}
-    .pin-box{background:#120008;border:1px solid #c9184a;border-radius:16px;padding:32px 28px;width:100%;max-width:360px;text-align:center;box-shadow:0 0 40px rgba(200,0,50,.25)}
-    .pin-role{font-size:11px;color:#6b2030;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
-    .pin-title{font-size:24px;color:#ff4d6d;margin-bottom:8px}
-    .pin-sub{font-size:12px;color:#3a0020;margin-bottom:28px}
-    .pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:28px}
-    .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #3a0020;background:transparent;transition:all .2s}
-    .pin-dot.filled{background:#c9184a;border-color:#c9184a;box-shadow:0 0 8px rgba(200,0,50,.5)}
-    .pin-dot.error{background:#ff0a54;border-color:#ff0a54;animation:shake .4s ease}
-    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-    .pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:280px;margin:0 auto}
-    .pin-key{padding:18px;border-radius:12px;border:1px solid #2a0010;background:rgba(20,0,10,.8);color:#f0e6e6;font-size:20px;font-family:Georgia,serif;cursor:pointer;transition:all .15s;user-select:none}
-    .pin-key:active{background:rgba(200,0,50,.3);border-color:#c9184a;transform:scale(.95)}
-    .pin-key.del{font-size:16px;color:#6b2030}.pin-key.empty{visibility:hidden}
-    .pin-switch{margin-top:24px;display:flex;gap:10px;justify-content:center}
-    .pin-switch-btn{padding:8px 16px;border-radius:20px;border:1px solid #2a0010;background:transparent;color:#6b2030;cursor:pointer;font-size:12px;font-family:Georgia,serif;transition:all .2s}
-    .pin-switch-btn.active{border-color:#c9184a;color:#ff4d6d;background:rgba(200,0,50,.1)}
-    .pin-error-msg{font-size:12px;color:#ff0a54;margin-top:16px;min-height:18px}
-    #header{background:rgba(10,0,5,.97);border-bottom:1px solid #2a0010;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;backdrop-filter:blur(10px);position:sticky;top:0;z-index:100}
-    #logo-title{font-size:18px;font-weight:bold;color:#ff4d6d;letter-spacing:2px}
-    #logo-sub{font-size:9px;color:#6b2030;letter-spacing:3px;text-transform:uppercase;margin-top:2px}
-    #sync-indicator{font-size:9px;margin-top:2px}
-    #points-badge{background:linear-gradient(135deg,#1a0010,#2d0020);border:1px solid #c9184a;border-radius:12px;padding:7px 15px;text-align:center;box-shadow:0 0 20px rgba(200,0,50,.2)}
-    #points-val{font-size:21px;font-weight:bold;color:#ff4d6d}
-    #points-lbl{font-size:9px;color:#8b3050;letter-spacing:2px}
-    #header-btns{display:flex;gap:6px;align-items:center}
-    #role-badge{padding:6px 12px;border-radius:20px;font-size:11px;border:1px solid #c9184a;background:rgba(200,0,50,.15);color:#ff4d6d;letter-spacing:1px}
-    .icon-btn{padding:7px 10px;border-radius:8px;border:1px solid #1a0010;background:transparent;color:#6b2030;cursor:pointer;font-size:14px;font-family:Georgia,serif}
-    #toast{position:fixed;top:20px;right:15px;z-index:9999;padding:11px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 30px rgba(200,0,50,.3);animation:fadeIn .3s ease;display:none;max-width:280px}
-    #toast.success{background:#1a0010;border:1px solid #c9184a;color:#ff9eb5}
-    #toast.error{background:#1a0005;border:1px solid #ff0a54;color:#ff6b81}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
-    .modal{background:#120008;border:1px solid #c9184a;border-radius:14px;padding:22px;width:100%;max-width:420px;box-shadow:0 0 40px rgba(200,0,50,.3)}
-    .modal h3{color:#ff4d6d;font-size:16px;margin-bottom:18px;letter-spacing:1px}
-    .modal label{display:block;font-size:11px;color:#6b2030;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;margin-top:13px}
-    .modal input,.modal select{width:100%;background:#0a0005;border:1px solid #3a0020;border-radius:8px;padding:10px 12px;color:#f0e6e6;font-family:Georgia,serif;font-size:14px;outline:none}
-    .modal input:focus,.modal select:focus{border-color:#c9184a}
-    .modal select option{background:#120008}
-    .modal-btns{display:flex;gap:10px;margin-top:20px}
-    .modal-save{flex:1;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;font-family:Georgia,serif}
-    .modal-cancel{flex:1;padding:10px;border-radius:8px;background:rgba(50,0,20,.8);border:1px solid #3a0015;color:#ff758f;cursor:pointer;font-size:13px;font-family:Georgia,serif}
-    #main{max-width:800px;margin:0 auto;padding:16px 13px;flex:1}
-    .tabs{display:flex;gap:4px;margin-bottom:16px;background:#0f0005;border-radius:12px;padding:4px;border:1px solid #1a0010}
-    .tab-btn{flex:1;padding:9px;border-radius:9px;border:none;background:transparent;color:#6b2030;cursor:pointer;font-size:11px;font-family:Georgia,serif;transition:all .2s}
-    .tab-btn.active{background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;font-weight:bold}
-    .card{display:flex;justify-content:space-between;align-items:center;background:rgba(20,0,10,.8);border:1px solid #1a0010;border-radius:10px;padding:12px 14px;margin-bottom:9px;transition:all .3s}
-    .card.done{background:rgba(200,0,50,.1);border-color:#3a0020}
-    .card.pending-approval{background:rgba(200,0,50,.08);border-color:#5a1030}
-    .card.locked{opacity:.45}
-    .card-title{font-size:13px;color:#f0e6e6;line-height:1.4}
-    .card-sub{font-size:11px;color:#6b2030;margin-top:3px}
-    .card-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;background:rgba(200,0,50,.1);padding:2px 7px;border-radius:4px;margin-bottom:4px;display:inline-block}
-    .card-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:8px}
-    .btn-earn{padding:7px 13px;border-radius:8px;border:none;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:12px;font-weight:bold;font-family:Georgia,serif;white-space:nowrap}
-    .btn-earn:disabled{background:rgba(60,0,20,.5);color:#3a0020;cursor:default;border:1px solid #2a0015}
-    .btn-pending{padding:7px 13px;border-radius:8px;border:1px solid #5a1030;background:rgba(100,0,30,.2);color:#8b3050;font-size:11px;font-family:Georgia,serif;white-space:nowrap;cursor:default}
-    .btn-redeem{padding:7px 12px;border-radius:8px;border:none;min-width:68px;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:11px;font-weight:bold;font-family:Georgia,serif;white-space:nowrap}
-    .btn-redeem:disabled{background:#1a0010;color:#3a0020;cursor:not-allowed}
-    .btn-edit{padding:5px 9px;border-radius:6px;border:1px solid #2a0015;background:transparent;color:#6b2030;cursor:pointer;font-size:11px;font-family:Georgia,serif;white-space:nowrap}
-    .btn-del{padding:5px 8px;border-radius:6px;border:1px solid #1a0008;background:transparent;color:#3a0015;cursor:pointer;font-size:13px;font-family:Georgia,serif}
-    .btn-add{width:100%;padding:11px;border-radius:10px;border:1px dashed #3a0020;background:rgba(20,0,10,.5);color:#6b2030;cursor:pointer;font-size:13px;font-family:Georgia,serif;margin-top:4px}
-    .btn-approve{flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;font-family:Georgia,serif}
-    .btn-deny{flex:1;padding:9px;border-radius:8px;background:rgba(50,0,20,.8);border:1px solid #3a0015;color:#ff758f;cursor:pointer;font-size:13px;font-family:Georgia,serif}
-    #cat-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-    .cat-btn{padding:5px 11px;border-radius:20px;border:1px solid #1a0010;background:transparent;color:#6b2030;cursor:pointer;font-size:11px;font-family:Georgia,serif}
-    .cat-btn.active{border-color:#c9184a;background:rgba(200,0,50,.2);color:#ff4d6d}
-    .log-entry{display:flex;justify-content:space-between;align-items:center;background:rgba(20,0,10,.8);border:1px solid #1a0010;border-radius:10px;padding:10px 14px;margin-bottom:8px}
-    .log-entry.earned{border-left:3px solid #ff4d6d}.log-entry.redeemed{border-left:3px solid #c9184a}
-    .log-entry.approved{border-left:3px solid #ff0a54}.log-entry.denied{border-left:3px solid #500020}
-    .log-entry.chore_approved{border-left:3px solid #ff4d6d}.log-entry.chore_denied{border-left:3px solid #500020}
-    .log-pts{font-size:13px;font-weight:bold;color:#ff4d6d;white-space:nowrap;margin-left:10px}
-    .req-card{background:rgba(20,0,10,.9);border-radius:12px;padding:15px;margin-bottom:11px;border:1px solid #3a0020}
-    .req-card.approved,.req-card.chore_approved{border-color:#c9184a}
-    .req-card.denied,.req-card.chore_denied{border-color:#300010}
-    .req-type-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;margin-bottom:6px;letter-spacing:1px}
-    .req-type-badge.chore{background:rgba(100,0,30,.3);color:#ff758f;border:1px solid #5a1030}
-    .req-type-badge.reward{background:rgba(200,0,50,.15);color:#ff4d6d;border:1px solid #c9184a}
-    .status-badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:bold;white-space:nowrap}
-    .status-badge.pending{background:rgba(100,0,30,.3);color:#ff9eb5;border:1px solid #5a2030}
-    .status-badge.approved,.status-badge.chore_approved{background:rgba(200,0,50,.2);color:#ff4d6d;border:1px solid #c9184a}
-    .status-badge.denied,.status-badge.chore_denied{background:rgba(50,0,20,.5);color:#5a2030;border:1px solid #300010}
-    .banner{margin-bottom:16px;padding:13px 15px;background:linear-gradient(135deg,rgba(200,0,50,.1),rgba(100,0,30,.2));border:1px solid #c9184a;border-radius:12px}
-    .section-lbl{font-size:10px;color:#6b2030;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:12px}
-    .empty{text-align:center;color:#3a0020;padding:45px 20px;font-size:14px}
-    .view{display:none}.view.active{display:block}
-    .tab-content{display:none}.tab-content.active{display:block}
-    .divider{font-size:10px;color:#3a0015;letter-spacing:2px;text-transform:uppercase;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid #1a0008}
-    .change-pin-box{background:rgba(20,0,10,.8);border:1px solid #2a0015;border-radius:12px;padding:18px;margin-top:16px}
-    .change-pin-box h4{color:#ff4d6d;font-size:13px;margin-bottom:14px;letter-spacing:1px}
-    .pin-input-row{display:flex;gap:10px;align-items:flex-end}
-    .pin-input-row input{flex:1;background:#0a0005;border:1px solid #3a0020;border-radius:8px;padding:10px 12px;color:#f0e6e6;font-family:Georgia,serif;font-size:18px;letter-spacing:6px;outline:none;text-align:center}
-    .pin-input-row input:focus{border-color:#c9184a}
-    .pin-save-btn{padding:10px 16px;border-radius:8px;border:none;white-space:nowrap;background:linear-gradient(135deg,#c9184a,#ff4d6d);color:#fff;cursor:pointer;font-size:12px;font-weight:bold;font-family:Georgia,serif}
-  </style>
 </head>
 <body>
 
-<!-- LOADING -->
+<!-- LOADING SCREEN -->
 <div class="screen active" id="screen-loading">
   <div class="spinner"></div>
-  <p style="color:#6b2030;font-size:12px;letter-spacing:3px;text-transform:uppercase">Loading...</p>
+  <p class="loading-label">Loading...</p>
 </div>
 
-<!-- SETUP -->
+<!-- SETUP SCREEN -->
 <div class="screen" id="screen-setup">
   <div class="setup-box">
-    <h2>🖤 Connect Devotion</h2>
+    <h2>Connect Devotion</h2>
     <p>Enter your Supabase credentials once. Stored only on this device.</p>
     <label>Supabase URL</label>
+    <!-- Pre-filled for convenience; stored in localStorage after first save -->
     <input id="setup-url" type="text" placeholder="https://xxxx.supabase.co" value="https://bkmxzvdtnyqwstcjtluz.supabase.co"/>
     <label>Supabase Anon Key</label>
     <input id="setup-key" type="text" placeholder="Paste your anon key here..."/>
-    <button class="btn-primary" onclick="saveSetup()">Connect 🖤</button>
+    <button class="btn-primary" onclick="saveSetup()">Connect</button>
     <p class="setup-note">Stored only on this device. Never shared.</p>
   </div>
 </div>
 
-<!-- PIN -->
+<!-- PIN SCREEN -->
 <div class="screen" id="screen-pin">
   <div class="pin-box">
     <div class="pin-role" id="pin-role-label">Choose your role</div>
-    <div class="pin-title" id="pin-title">🖤 Enter PIN</div>
-    <div class="pin-sub" id="pin-sub">Enter your 4-digit PIN</div>
-    <div class="pin-dots" id="pin-dots">
+    <div class="pin-title" id="pin-title">Enter PIN</div>
+    <div class="pin-sub"   id="pin-sub">Enter your 4-digit PIN</div>
+    <div class="pin-dots"  id="pin-dots">
       <div class="pin-dot" id="dot-0"></div>
       <div class="pin-dot" id="dot-1"></div>
       <div class="pin-dot" id="dot-2"></div>
@@ -171,21 +58,22 @@
       <button class="pin-key" onclick="pinKey('9')">9</button>
       <button class="pin-key empty"></button>
       <button class="pin-key" onclick="pinKey('0')">0</button>
-      <button class="pin-key del" onclick="pinBackspace()">⌫</button>
+      <button class="pin-key del" onclick="pinBackspace()">&#9003;</button>
     </div>
     <div class="pin-switch">
-      <button class="pin-switch-btn active" id="switch-sub" onclick="setPinRole('sub')">💋 Sub</button>
-      <button class="pin-switch-btn" id="switch-mistress" onclick="setPinRole('mistress')">👑 Mistress</button>
+      <button class="pin-switch-btn active" id="switch-sub"      onclick="setPinRole('sub')">Sub</button>
+      <button class="pin-switch-btn"        id="switch-mistress" onclick="setPinRole('mistress')">Mistress</button>
     </div>
     <div class="pin-error-msg" id="pin-error"></div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- APP SCREEN -->
 <div class="screen" id="screen-app">
+
   <div id="header">
     <div>
-      <div id="logo-title">🖤 DEVOTION</div>
+      <div id="logo-title">DEVOTION</div>
       <div id="logo-sub">Chore Reward System</div>
       <div id="sync-indicator"></div>
     </div>
@@ -194,86 +82,110 @@
       <div id="points-lbl">POINTS</div>
     </div>
     <div id="header-btns">
-      <div id="role-badge">💋 Sub</div>
-      <button class="icon-btn" onclick="refreshAll()">↻</button>
-      <button class="icon-btn" onclick="lockApp()">🔒</button>
+      <div id="role-badge">Sub</div>
+      <button class="icon-btn" onclick="refreshAll()">&#8635;</button>
+      <button class="icon-btn" onclick="lockApp()">&#128274;</button>
     </div>
   </div>
 
   <div id="main">
+
     <!-- SUB VIEW -->
     <div class="view active" id="view-sub">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('chores')" id="tab-chores">🧹 Chores</button>
-        <button class="tab-btn" onclick="switchTab('rewards')" id="tab-rewards">🎁 Rewards</button>
-        <button class="tab-btn" onclick="switchTab('log')" id="tab-log">📜 History</button>
+        <button class="tab-btn active" id="tab-chores"  onclick="switchTab('chores')">Chores</button>
+        <button class="tab-btn"        id="tab-rewards" onclick="switchTab('rewards')">Rewards</button>
+        <button class="tab-btn"        id="tab-log"     onclick="switchTab('log')">History</button>
       </div>
+
       <div class="tab-content active" id="content-chores">
-        <div style="font-size:11px;color:#3a0020;margin-bottom:12px;padding:10px 12px;background:rgba(20,0,10,.6);border-radius:8px;border:1px solid #1a0008">
-          ⏳ Chores need Mistress approval before points are added
-        </div>
+        <div class="chore-hint">Chores need Mistress approval before points are added</div>
         <div id="chores-list"></div>
       </div>
+
       <div class="tab-content" id="content-rewards">
         <div id="cat-filter"></div>
         <div id="rewards-list"></div>
       </div>
-      <div class="tab-content" id="content-log"><div id="log-list"></div></div>
+
+      <div class="tab-content" id="content-log">
+        <div id="log-list"></div>
+      </div>
     </div>
 
     <!-- MISTRESS VIEW -->
     <div class="view" id="view-mistress">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchMTab('requests')" id="mtab-requests">📬 Requests</button>
-        <button class="tab-btn" onclick="switchMTab('manage-chores')" id="mtab-manage-chores">🧹 Chores</button>
-        <button class="tab-btn" onclick="switchMTab('manage-rewards')" id="mtab-manage-rewards">🎁 Rewards</button>
-        <button class="tab-btn" onclick="switchMTab('settings')" id="mtab-settings">⚙️</button>
+        <button class="tab-btn active" id="mtab-requests"       onclick="switchMTab('requests')"       title="Requests">📬<span class="tab-badge" id="mtab-badge"></span></button>
+        <button class="tab-btn"        id="mtab-manage-chores"  onclick="switchMTab('manage-chores')"  title="Chores">🧹</button>
+        <button class="tab-btn"        id="mtab-manage-rewards" onclick="switchMTab('manage-rewards')" title="Rewards">🎁</button>
+        <button class="tab-btn"        id="mtab-penalties"      onclick="switchMTab('penalties')"      title="Penalties">⚠️</button>
+        <button class="tab-btn"        id="mtab-settings"       onclick="switchMTab('settings')"       title="Settings">⚙️</button>
       </div>
+
       <div class="tab-content active" id="mcontent-requests">
         <div class="banner">
-          <div style="font-size:14px;color:#ff4d6d;font-weight:bold;margin-bottom:3px">👑 Mistress Control Panel</div>
-          <div style="font-size:12px;color:#8b3050">Approve chore completions & reward requests. Tap ↻ to sync.</div>
+          <div class="banner-title">Mistress Control Panel</div>
+          <div class="banner-sub">Approve chore completions &amp; reward requests. Tap &#8635; to sync.</div>
         </div>
         <div id="requests-list"></div>
       </div>
+
       <div class="tab-content" id="mcontent-manage-chores">
         <span class="section-lbl">Add, edit or remove chores</span>
         <div id="manage-chores-list"></div>
-        <button class="btn-add" onclick="openModal('chore')">+ Add New Chore</button>
       </div>
+
       <div class="tab-content" id="mcontent-manage-rewards">
         <span class="section-lbl">Add, edit or remove rewards</span>
         <div id="manage-rewards-list"></div>
         <button class="btn-add" onclick="openModal('reward')">+ Add New Reward</button>
       </div>
+
+      <div class="tab-content" id="mcontent-penalties">
+        <span class="section-lbl">Apply penalties to deduct points immediately</span>
+        <div id="penalties-list"></div>
+        <button class="btn-add" onclick="openModal('penalty')">+ Add New Penalty</button>
+      </div>
+
       <div class="tab-content" id="mcontent-settings">
         <span class="section-lbl">Settings</span>
+
         <div class="change-pin-box">
-          <h4>🔐 Change Sub PIN</h4>
+          <h4>Change Sub PIN</h4>
           <div class="pin-input-row">
-            <input type="tel" id="new-sub-pin" placeholder="••••" maxlength="4" pattern="\d{4}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"/>
+            <input type="tel" id="new-sub-pin" placeholder="&bull;&bull;&bull;&bull;" maxlength="4" pattern="\d{4}"
+                   oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"/>
             <button class="pin-save-btn" onclick="changePIN('sub')">Save</button>
           </div>
         </div>
+
         <div class="change-pin-box">
-          <h4>🔐 Change Mistress PIN</h4>
+          <h4>Change Mistress PIN</h4>
           <div class="pin-input-row">
-            <input type="tel" id="new-mistress-pin" placeholder="••••" maxlength="4" pattern="\d{4}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"/>
+            <input type="tel" id="new-mistress-pin" placeholder="&bull;&bull;&bull;&bull;" maxlength="4" pattern="\d{4}"
+                   oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"/>
             <button class="pin-save-btn" onclick="changePIN('mistress')">Save</button>
           </div>
         </div>
+
         <div class="change-pin-box">
-          <h4 style="color:#6b2030">⚠️ Danger Zone</h4>
-          <button onclick="resetPoints()" style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #3a0015;background:transparent;color:#6b2030;cursor:pointer;font-size:13px;font-family:Georgia,serif">
-            Reset Points & History
-          </button>
+          <h4>Reward Categories</h4>
+          <div id="manage-categories-list"></div>
+          <button class="btn-add" onclick="openCatModal()">+ Add New Category</button>
+        </div>
+
+        <div class="change-pin-box">
+          <h4 class="danger">Danger Zone</h4>
+          <button class="btn-danger" onclick="resetPoints()">Reset Points &amp; History</button>
         </div>
       </div>
+
     </div>
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- ADD / EDIT MODAL -->
 <div class="modal-overlay" id="modal" style="display:none" onclick="closeModalOutside(event)">
   <div class="modal">
     <h3 id="modal-title">Add Chore</h3>
@@ -283,445 +195,51 @@
     <input id="modal-points" type="number" placeholder="e.g. 10" min="1" max="999"/>
     <div id="modal-cat-wrap">
       <label>Category</label>
-      <select id="modal-cat">
-        <option value="Outfit">👗 Outfit</option>
-        <option value="JOI">💬 JOI</option>
-        <option value="Attention">🤝 Attention</option>
-        <option value="Cum">💦 Cum</option>
-        <option value="Finish">🎯 Finish</option>
-        <option value="Power Flip">🔓 Power Flip</option>
-        <option value="Lifestyle">🎁 Lifestyle</option>
-        <option value="Luxury">🌟 Luxury</option>
-        <option value="Custom">✨ Custom</option>
-      </select>
+      <!-- Options populated dynamically from devotion_categories table -->
+      <select id="modal-cat"></select>
     </div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
-      <button class="modal-save" onclick="saveModal()">Save 🖤</button>
+      <button class="modal-save"   onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL (Mistress only) -->
+<div class="modal-overlay" id="cat-modal" style="display:none" onclick="closeCatModalOutside(event)">
+  <div class="modal">
+    <h3 id="cat-modal-title">Add Category</h3>
+    <label>Name</label>
+    <input id="cat-modal-name" type="text" placeholder="e.g. Lifestyle" maxlength="30"/>
+    <label>Icon (paste any emoji)</label>
+    <input id="cat-modal-icon" type="text" placeholder="✨" maxlength="4"/>
+    <label>Color</label>
+    <div class="color-pick-row">
+      <input id="cat-modal-color" type="color" value="#ff758f"
+             oninput="syncCatColor('picker')"/>
+      <input id="cat-modal-hex" type="text" placeholder="#ff758f" maxlength="7"
+             oninput="syncCatColor('hex')"/>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeCatModal()">Cancel</button>
+      <button class="modal-save"   onclick="saveCatModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirm-modal" style="display:none" onclick="closeConfirmOutside(event)">
+  <div class="modal">
+    <p id="confirm-msg" class="confirm-msg"></p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="modal-save"   onclick="executeConfirm()">Confirm</button>
     </div>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<script>
-const CAT_ICONS={Outfit:"👗",JOI:"💬",Attention:"🤝",Cum:"💦",Finish:"🎯","Power Flip":"🔓",Lifestyle:"🎁",Luxury:"🌟",Custom:"✨"};
-const CAT_COLORS={Outfit:"#ff4d6d",JOI:"#c9184a",Attention:"#ff758f",Cum:"#ff4d6d",Finish:"#c9184a","Power Flip":"#ff0a54",Lifestyle:"#ff6b81",Luxury:"#ff0a54",Custom:"#ff758f"};
-const SESSION_DURATION=7*24*60*60*1000;
-
-let sb=null,currentRole=null,pinRole='sub',pinEntry='';
-let state={points:0,chores:[],rewards:[],log:[],requests:[],choreRequests:[]};
-let selectedCat="All",flashedChores=new Set(),modalMode=null,modalEdit=null;
-
-// SCREENS
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
-
-// SETUP
-function getSavedCreds(){try{return{url:localStorage.getItem("sb_url")||"",key:localStorage.getItem("sb_key")||""};}catch(e){return{url:"",key:""};}}
-async function saveSetup(){
-  const url=document.getElementById("setup-url").value.trim();
-  const key=document.getElementById("setup-key").value.trim();
-  if(!url||!key){showToast("Please enter both fields","error");return;}
-  try{localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);}catch(e){}
-  await connectSupabase(url,key);
-}
-async function connectSupabase(url,key){
-  showScreen('loading');
-  try{
-    sb=supabase.createClient(url,key);
-    const{error}=await sb.from("devotion_state").select("id").eq("id","main").single();
-    if(error)throw error;
-    checkSession();
-  }catch(e){showScreen('setup');showToast("Connection failed. Check your anon key.","error");}
-}
-
-// SESSION
-function checkSession(){
-  try{
-    const s=JSON.parse(localStorage.getItem("devotion_session")||"null");
-    if(s&&s.role&&Date.now()<s.expires){currentRole=s.role;enterApp();return;}
-  }catch(e){}
-  showPinScreen('sub');
-}
-function saveSession(role){try{localStorage.setItem("devotion_session",JSON.stringify({role,expires:Date.now()+SESSION_DURATION}));}catch(e){}}
-function lockApp(){try{localStorage.removeItem("devotion_session");}catch(e){}currentRole=null;showPinScreen('sub');}
-
-// PIN
-function showPinScreen(role){
-  pinRole=role;pinEntry='';updatePinDots();
-  document.getElementById('pin-error').textContent='';
-  document.getElementById('pin-role-label').textContent=role==='sub'?'💋 Sub Login':'👑 Mistress Login';
-  document.getElementById('pin-title').textContent=role==='sub'?'Enter Sub PIN':'Enter Mistress PIN';
-  document.getElementById('pin-sub').textContent='Default: sub=1234, mistress=9999';
-  document.getElementById('switch-sub').classList.toggle('active',role==='sub');
-  document.getElementById('switch-mistress').classList.toggle('active',role==='mistress');
-  showScreen('pin');
-}
-function setPinRole(role){pinEntry='';updatePinDots();document.getElementById('pin-error').textContent='';showPinScreen(role);}
-function pinKey(digit){if(pinEntry.length>=4)return;pinEntry+=digit;updatePinDots();if(pinEntry.length===4)setTimeout(verifyPin,100);}
-function pinBackspace(){pinEntry=pinEntry.slice(0,-1);updatePinDots();}
-function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot'+(i<pinEntry.length?' filled':'');}}
-async function verifyPin(){
-  try{
-    const{data,error}=await sb.from("devotion_pins").select("pin").eq("role",pinRole).single();
-    if(error||!data){pinFail("Connection error");return;}
-    if(data.pin===pinEntry){currentRole=pinRole;saveSession(pinRole);enterApp();}
-    else pinFail("Wrong PIN — try again");
-  }catch(e){pinFail("Error checking PIN");}
-}
-function pinFail(msg){
-  document.getElementById('pin-error').textContent=msg;
-  for(let i=0;i<4;i++)document.getElementById('dot-'+i).className='pin-dot error';
-  setTimeout(()=>{pinEntry='';updatePinDots();},800);
-}
-
-// ENTER APP
-async function enterApp(){
-  showScreen('loading');
-  document.getElementById('view-sub').classList.toggle('active',currentRole==='sub');
-  document.getElementById('view-mistress').classList.toggle('active',currentRole==='mistress');
-  document.getElementById('role-badge').textContent=currentRole==='sub'?'💋 Sub':'👑 Mistress';
-  await loadAll();
-  showScreen('app');
-}
-
-// DATA
-async function loadAll(){
-  try{
-    const[s,c,r,l,q,cr]=await Promise.all([
-      sb.from("devotion_state").select("*").eq("id","main").single(),
-      sb.from("devotion_chores").select("*").order("id"),
-      sb.from("devotion_rewards").select("*").order("id"),
-      sb.from("devotion_log").select("*").order("created_at",{ascending:false}).limit(100),
-      sb.from("devotion_requests").select("*").order("created_at",{ascending:false}),
-      sb.from("devotion_chore_requests").select("*").order("created_at",{ascending:false})
-    ]);
-    if(s.data) state.points=s.data.points;
-    if(c.data) state.chores=c.data;
-    if(r.data) state.rewards=r.data;
-    if(l.data) state.log=l.data;
-    if(q.data) state.requests=q.data;
-    if(cr.data)state.choreRequests=cr.data;
-    renderAll();
-  }catch(e){showToast("Sync failed","error");}
-}
-async function refreshAll(){setSyncStatus("syncing...");await loadAll();setSyncStatus("synced");showToast("Synced! 🖤");}
-function setSyncStatus(s){const el=document.getElementById("sync-indicator");const c={synced:"#3a0f18","syncing...":"#6b2030",error:"#ff0a54"};el.textContent="● "+s;el.style.color=c[s]||"#3a0f18";}
-
-// TOAST
-let toastT;
-function showToast(msg,type="success"){const t=document.getElementById("toast");t.textContent=msg;t.className=type;t.style.display="block";clearTimeout(toastT);toastT=setTimeout(()=>{t.style.display="none";},3000);}
-
-// MODAL
-function openModal(mode,id=null){
-  modalMode=mode;modalEdit=id;
-  const isR=mode==="reward";
-  document.getElementById("modal-cat-wrap").style.display=isR?"block":"none";
-  document.getElementById("modal-title").textContent=id!==null?(isR?"Edit Reward":"Edit Chore"):(isR?"Add Reward":"Add Chore");
-  if(id!==null){
-    const item=(isR?state.rewards:state.chores).find(x=>x.id===id);
-    if(item){document.getElementById("modal-name").value=item.name;document.getElementById("modal-points").value=item.pts;if(isR)document.getElementById("modal-cat").value=item.cat;}
-  }else{document.getElementById("modal-name").value="";document.getElementById("modal-points").value="";if(isR)document.getElementById("modal-cat").value="Outfit";}
-  document.getElementById("modal").style.display="flex";
-  setTimeout(()=>document.getElementById("modal-name").focus(),100);
-}
-function closeModal(){document.getElementById("modal").style.display="none";modalMode=null;modalEdit=null;}
-function closeModalOutside(e){if(e.target===document.getElementById("modal"))closeModal();}
-async function saveModal(){
-  const name=document.getElementById("modal-name").value.trim();
-  const pts=parseInt(document.getElementById("modal-points").value);
-  const cat=document.getElementById("modal-cat").value;
-  if(!name){showToast("Enter a name","error");return;}
-  if(!pts||pts<1){showToast("Enter valid points","error");return;}
-  setSyncStatus("syncing...");
-  try{
-    if(modalMode==="chore"){
-      modalEdit!==null?await sb.from("devotion_chores").update({name,pts}).eq("id",modalEdit):await sb.from("devotion_chores").insert({name,pts});
-      showToast(modalEdit!==null?"Chore updated 🖤":"Chore added 🖤");
-    }else{
-      modalEdit!==null?await sb.from("devotion_rewards").update({name,pts,cat}).eq("id",modalEdit):await sb.from("devotion_rewards").insert({cat,name,pts});
-      showToast(modalEdit!==null?"Reward updated 🖤":"Reward added 🔥");
-    }
-    closeModal();await loadAll();setSyncStatus("synced");
-  }catch(e){showToast("Save failed","error");setSyncStatus("error");}
-}
-
-// VIEWS
-function switchTab(tab){
-  ["chores","rewards","log"].forEach(t=>{document.getElementById("tab-"+t).classList.toggle("active",t===tab);document.getElementById("content-"+t).classList.toggle("active",t===tab);});
-  if(tab==="log")renderLog();if(tab==="rewards"){renderCatFilter();renderRewards();}
-}
-function switchMTab(tab){
-  ["requests","manage-chores","manage-rewards","settings"].forEach(t=>{
-    document.getElementById("mtab-"+t).classList.toggle("active",t===tab);
-    document.getElementById("mcontent-"+t).classList.toggle("active",t===tab);
-  });
-  if(tab==="requests")renderRequests();
-  if(tab==="manage-chores")renderManageChores();
-  if(tab==="manage-rewards")renderManageRewards();
-}
-
-// RENDER ALL
-function renderAll(){
-  updatePoints();
-  updateMistressBadge();
-  renderChores();
-  renderCatFilter();
-  renderRewards();
-  renderLog();
-  // Only render the active mistress tab to avoid stale data
-  if(currentRole==="mistress"){
-    const activeTab=document.querySelector("#view-mistress .tab-content.active");
-    if(activeTab){
-      const id=activeTab.id;
-      if(id==="mcontent-requests")renderRequests();
-      else if(id==="mcontent-manage-chores")renderManageChores();
-      else if(id==="mcontent-manage-rewards")renderManageRewards();
-      else renderRequests(); // default
-    } else {
-      renderRequests();
-    }
-  }
-}
-function updatePoints(){document.getElementById("points-val").textContent=state.points;}
-
-// CHORES - sub submits for approval
-function renderChores(){
-  const el=document.getElementById("chores-list");
-  if(!state.chores.length){el.innerHTML='<div class="empty">No chores yet 🖤</div>';return;}
-  el.innerHTML=state.chores.map(c=>{
-    const pending=state.choreRequests.find(r=>r.chore_id===c.id&&r.status==="pending");
-    const flashed=flashedChores.has(c.id);
-    let btn='';
-    if(pending){
-      btn=`<span class="btn-pending">⏳ Awaiting</span>`;
-    }else if(flashed){
-      btn=`<button class="btn-earn" disabled>Sent ✓</button>`;
-    }else{
-      btn=`<button class="btn-earn" onclick="submitChore(${c.id})">Mark Done</button>`;
-    }
-    return `<div class="card ${pending||flashed?"pending-approval":""}">
-      <div style="flex:1">
-        <div class="card-title">${esc(c.name)}</div>
-        <div class="card-sub">+${c.pts} pts ${pending?'· <span style="color:#5a1030">awaiting approval</span>':''}</div>
-      </div>
-      ${btn}
-    </div>`;
-  }).join("");
-}
-
-async function submitChore(id){
-  const c=state.chores.find(x=>x.id===id);
-  if(!c||flashedChores.has(id))return;
-  const alreadyPending=state.choreRequests.find(r=>r.chore_id===id&&r.status==="pending");
-  if(alreadyPending){showToast("Already awaiting approval ⏳");return;}
-  flashedChores.add(id);renderChores();setSyncStatus("syncing...");
-  try{
-    await sb.from("devotion_chore_requests").insert({chore_id:c.id,chore_name:c.name,chore_pts:c.pts,status:"pending"});
-    showToast("Sent to Mistress for approval! ⏳");setSyncStatus("synced");
-    await loadAll();
-  }catch(e){showToast("Failed to submit","error");setSyncStatus("error");flashedChores.delete(id);renderChores();}
-}
-
-// REWARDS
-function renderCatFilter(){
-  const cats=["All",...new Set(state.rewards.map(r=>r.cat))];
-  if(!cats.includes(selectedCat))selectedCat="All";
-  document.getElementById("cat-filter").innerHTML=cats.map(c=>`<button class="cat-btn ${selectedCat===c?"active":""}" onclick="selectCat('${escJS(c)}')">${c==="All"?"All":(CAT_ICONS[c]||"✨")+" "+esc(c)}</button>`).join("");
-}
-function selectCat(cat){selectedCat=cat;renderCatFilter();renderRewards();}
-function renderRewards(){
-  const list=selectedCat==="All"?state.rewards:state.rewards.filter(r=>r.cat===selectedCat);
-  const el=document.getElementById("rewards-list");
-  if(!list.length){el.innerHTML='<div class="empty">No rewards here 🖤</div>';return;}
-  el.innerHTML=list.map(r=>{
-    const can=state.points>=r.pts;
-    return `<div class="card ${can?"":"locked"}">
-      <div style="flex:1;margin-right:10px">
-        <span class="card-tag" style="color:${CAT_COLORS[r.cat]||"#ff4d6d"}">${CAT_ICONS[r.cat]||"✨"} ${r.cat}</span>
-        <div class="card-title">${esc(r.name)}</div>
-        <div class="card-sub">${r.pts} pts required</div>
-      </div>
-      <button class="btn-redeem" onclick="redeemReward(${r.id})" ${can?"":"disabled"}>${can?"Redeem 🔥":"🔒"}</button>
-    </div>`;
-  }).join("");
-}
-async function redeemReward(id){
-  const r=state.rewards.find(x=>x.id===id);
-  if(!r||state.points<r.pts){showToast("Not enough points 😈","error");return;}
-  setSyncStatus("syncing...");
-  try{
-    const np=state.points-r.pts;
-    await Promise.all([
-      sb.from("devotion_state").update({points:np,updated_at:new Date()}).eq("id","main"),
-      sb.from("devotion_requests").insert({reward_id:r.id,reward_name:r.name,reward_cat:r.cat,reward_pts:r.pts,status:"pending"}),
-      sb.from("devotion_log").insert({type:"redeemed",text:`Requested: ${r.name}`,pts:`-${r.pts}`})
-    ]);
-    state.points=np;updatePoints();showToast("Request sent to Mistress! 🔥");setSyncStatus("synced");await loadAll();
-  }catch(e){showToast("Failed","error");setSyncStatus("error");}
-}
-
-// LOG
-function renderLog(){
-  const el=document.getElementById("log-list");
-  if(!state.log.length){el.innerHTML='<div class="empty">No history yet 🖤</div>';return;}
-  el.innerHTML=state.log.map(e=>`<div class="log-entry ${e.type}">
-    <div>
-      <div style="font-size:12px;color:#f0e6e6">${esc(e.text)}</div>
-      <div style="font-size:10px;color:#3a0020;margin-top:2px">${fmtDate(e.created_at)}</div>
-    </div>
-    ${e.pts?`<div class="log-pts">${e.pts}</div>`:""}
-  </div>`).join("");
-}
-
-// REQUESTS - mistress sees BOTH chore completions AND reward requests
-function updateMistressBadge(){
-  const pendingChores=state.choreRequests.filter(r=>r.status==="pending").length;
-  const pendingRewards=state.requests.filter(r=>r.status==="pending").length;
-  const total=pendingChores+pendingRewards;
-  const reqTab=document.getElementById("mtab-requests");
-  if(reqTab)reqTab.textContent="📬 Requests"+(total>0?` (${total})`:"");;
-}
-
-function renderRequests(){
-  const el=document.getElementById("requests-list");
-  const allChores=state.choreRequests;
-  const allRewards=state.requests;
-  updateMistressBadge();
-
-  if(!allChores.length&&!allRewards.length){el.innerHTML='<div class="empty">No requests yet 🖤</div>';return;}
-
-  let html="";
-
-  // Chore requests
-  if(allChores.length){
-    html+=`<div class="divider">🧹 Chore Completions</div>`;
-    html+=allChores.map(req=>`
-      <div class="req-card ${req.status}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:${req.status==="pending"?"12px":"0"}">
-          <div>
-            <span class="req-type-badge chore">CHORE</span>
-            <div style="font-size:10px;color:#6b2030;margin-bottom:4px">${fmtDate(req.created_at)}</div>
-            <div style="font-size:14px;color:#f0e6e6">${esc(req.chore_name)}</div>
-            <div style="font-size:11px;color:#6b2030;margin-top:2px">+${req.chore_pts} pts if approved</div>
-          </div>
-          <span class="status-badge ${req.status}">${req.status.toUpperCase()}</span>
-        </div>
-        ${req.status==="pending"?`
-          <div style="display:flex;gap:10px">
-            <button class="btn-approve" onclick="decideChore(${req.id},true)">✅ Approve</button>
-            <button class="btn-deny" onclick="decideChore(${req.id},false)">❌ Deny</button>
-          </div>`:""}
-      </div>`).join("");
-  }
-
-  // Reward requests
-  if(allRewards.length){
-    html+=`<div class="divider">🎁 Reward Requests</div>`;
-    html+=allRewards.map(req=>`
-      <div class="req-card ${req.status}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:${req.status==="pending"?"12px":"0"}">
-          <div>
-            <span class="req-type-badge reward">REWARD</span>
-            <div style="font-size:10px;color:#6b2030;margin-bottom:4px">${CAT_ICONS[req.reward_cat]||"✨"} ${req.reward_cat} · ${fmtDate(req.created_at)}</div>
-            <div style="font-size:14px;color:#f0e6e6">${esc(req.reward_name)}</div>
-            <div style="font-size:11px;color:#6b2030;margin-top:2px">${req.reward_pts} pts</div>
-          </div>
-          <span class="status-badge ${req.status}">${req.status.toUpperCase()}</span>
-        </div>
-        ${req.status==="pending"?`
-          <div style="display:flex;gap:10px">
-            <button class="btn-approve" onclick="decideReward(${req.id},true)">✅ Approve</button>
-            <button class="btn-deny" onclick="decideReward(${req.id},false)">❌ Deny</button>
-          </div>`:""}
-      </div>`).join("");
-  }
-
-  el.innerHTML=html;
-}
-
-// Decide on chore completion
-async function decideChore(id,approved){
-  const req=state.choreRequests.find(r=>r.id===id);if(!req)return;
-  setSyncStatus("syncing...");
-  try{
-    const ops=[sb.from("devotion_chore_requests").update({status:approved?"approved":"denied"}).eq("id",id)];
-    if(approved){
-      const np=state.points+req.chore_pts;
-      ops.push(sb.from("devotion_state").update({points:np,updated_at:new Date()}).eq("id","main"));
-      ops.push(sb.from("devotion_log").insert({type:"earned",text:`✅ Approved: ${req.chore_name}`,pts:`+${req.chore_pts}`}));
-    }else{
-      ops.push(sb.from("devotion_log").insert({type:"denied",text:`❌ Denied: ${req.chore_name}`,pts:""}));
-    }
-    await Promise.all(ops);
-    showToast(approved?`+${req.chore_pts} pts approved! 🔥`:"Chore denied 🖤");
-    setSyncStatus("synced");await loadAll();
-  }catch(e){showToast("Failed","error");setSyncStatus("error");}
-}
-
-// Decide on reward request
-async function decideReward(id,approved){
-  const req=state.requests.find(r=>r.id===id);if(!req)return;
-  setSyncStatus("syncing...");
-  try{
-    const ops=[
-      sb.from("devotion_requests").update({status:approved?"approved":"denied"}).eq("id",id),
-      sb.from("devotion_log").insert({type:approved?"approved":"denied",text:`${approved?"✅ Approved":"❌ Denied"}: ${req.reward_name}`,pts:""})
-    ];
-    if(!approved)ops.push(sb.from("devotion_state").update({points:state.points+req.reward_pts,updated_at:new Date()}).eq("id","main"));
-    await Promise.all(ops);
-    showToast(approved?"Reward approved 🔥":"Reward denied 🖤");setSyncStatus("synced");await loadAll();
-  }catch(e){showToast("Failed","error");setSyncStatus("error");}
-}
-
-// MANAGE
-function renderManageChores(){
-  const el=document.getElementById("manage-chores-list");
-  if(!state.chores.length){el.innerHTML='<div class="empty">No chores yet</div>';return;}
-  el.innerHTML=state.chores.map(c=>`<div class="card"><div style="flex:1"><div class="card-title">${esc(c.name)}</div><div class="card-sub">${c.pts} pts</div></div><div class="card-actions"><button class="btn-edit" onclick="openModal('chore',${c.id})">✏️</button><button class="btn-del" onclick="deleteChore(${c.id})">🗑</button></div></div>`).join("");
-}
-async function deleteChore(id){if(!confirm("Remove this chore?"))return;try{await sb.from("devotion_chores").delete().eq("id",id);showToast("Removed 🖤");await loadAll();}catch(e){showToast("Failed","error");}}
-
-function renderManageRewards(){
-  const el=document.getElementById("manage-rewards-list");
-  if(!state.rewards.length){el.innerHTML='<div class="empty">No rewards yet</div>';return;}
-  el.innerHTML=state.rewards.map(r=>`<div class="card"><div style="flex:1;margin-right:8px"><span class="card-tag" style="color:${CAT_COLORS[r.cat]||"#ff4d6d"}">${CAT_ICONS[r.cat]||"✨"} ${r.cat}</span><div class="card-title">${esc(r.name)}</div><div class="card-sub">${r.pts} pts</div></div><div class="card-actions"><button class="btn-edit" onclick="openModal('reward',${r.id})">✏️</button><button class="btn-del" onclick="deleteReward(${r.id})">🗑</button></div></div>`).join("");
-}
-async function deleteReward(id){if(!confirm("Remove this reward?"))return;try{await sb.from("devotion_rewards").delete().eq("id",id);showToast("Removed 🖤");await loadAll();}catch(e){showToast("Failed","error");}}
-
-// CHANGE PIN
-async function changePIN(role){
-  const input=document.getElementById(`new-${role}-pin`).value.trim();
-  if(!/^\d{4}$/.test(input)){showToast("PIN must be exactly 4 digits","error");return;}
-  try{await sb.from("devotion_pins").update({pin:input,updated_at:new Date()}).eq("role",role);document.getElementById(`new-${role}-pin`).value="";showToast(`${role==="sub"?"Sub":"Mistress"} PIN updated 🖤`);}
-  catch(e){showToast("Failed to update PIN","error");}
-}
-
-// RESET
-async function resetPoints(){
-  if(!confirm("Reset points & history?\nChores and rewards will be kept."))return;
-  try{
-    await Promise.all([
-      sb.from("devotion_state").update({points:0}).eq("id","main"),
-      sb.from("devotion_log").delete().neq("id",0),
-      sb.from("devotion_requests").delete().neq("id",0),
-      sb.from("devotion_chore_requests").delete().neq("id",0)
-    ]);
-    showToast("Reset! Fresh start 🖤");await loadAll();
-  }catch(e){showToast("Failed","error");}
-}
-
-// HELPERS
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function escJS(s){return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
-function fmtDate(d){try{return new Date(d).toLocaleString();}catch(e){return d||"";}}
-
-// BOOT
-window.addEventListener("load",()=>{
-  const{url,key}=getSavedCreds();
-  if(url&&key)connectSupabase(url,key);
-  else showScreen('setup');
-});
-</script>
+<script src="js/app.js"></script>
 </body>
 </html>
